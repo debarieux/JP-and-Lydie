@@ -518,7 +518,7 @@ body {
 
 /* Galerie */
 .gallery-header {
-  background: white;
+  background: white !important;
   padding: 2rem 3rem;
   border-bottom: 1px solid #e9ecef;
   display: flex;
