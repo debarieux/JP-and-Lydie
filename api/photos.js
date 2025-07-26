@@ -28,42 +28,7 @@ const loadPhotos = () => {
   
   // Données par défaut si le fichier n'existe pas
   return [
-    {
-      id: 1,
-      url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-      title: "Notre premier rendez-vous",
-      isFavorite: false
-    },
-    {
-      id: 2,
-      url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      title: "Nos fiançailles",
-      isFavorite: true
-    },
-    {
-      id: 3,
-      url: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
-      title: "Préparation du mariage",
-      isFavorite: false
-    },
-    {
-      id: 4,
-      url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      title: "Le grand jour",
-      isFavorite: false
-    },
-    {
-      id: 5,
-      url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-      title: "Notre voyage de noces",
-      isFavorite: false
-    },
-    {
-      id: 6,
-      url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      title: "Notre première maison",
-      isFavorite: false
-    }
+    // Galerie vide par défaut - plus d'images de démonstration
   ];
 };
 
