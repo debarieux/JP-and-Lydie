@@ -47,8 +47,14 @@ function App() {
         }));
         
         console.log('Photos converties:', convertedPhotos);
+        console.log('Nombre de photos dans l\'état:', convertedPhotos.length);
         setPhotos(convertedPhotos);
         console.log('Photos mises à jour dans l\'état');
+        
+        // Vérification que les photos sont bien dans l'état
+        setTimeout(() => {
+          console.log('État actuel des photos:', photos);
+        }, 100);
       } else {
         const errorText = await response.text();
         console.error('Erreur lors du chargement des photos:', response.status, errorText);
@@ -280,6 +286,13 @@ function App() {
       // Recharger toutes les photos depuis l'API après l'upload
       await fetchPhotos();
       console.log('Galerie rechargée avec succès');
+      
+      // Vérification supplémentaire
+      setTimeout(async () => {
+        console.log('Vérification finale des photos...');
+        await fetchPhotos();
+        console.log('Vérification terminée');
+      }, 1000);
       
       setUploadedFiles([]);
       showNotification('Photos ajoutées avec succès !', 'success');
