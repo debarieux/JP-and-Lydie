@@ -243,13 +243,9 @@ function App() {
         const file = uploadedFiles[i];
         console.log(`Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
         
-        // Convertir le fichier en base64
-        const reader = new FileReader();
-        const imageData = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        // Compresser et convertir le fichier en base64
+        const compressedImageData = await compressImage(file);
+        console.log(`Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
         
         console.log('Image convertie en base64, envoi à l\'API d\'upload...');
         
@@ -260,7 +256,7 @@ function App() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            imageData: imageData,
+            imageData: compressedImageData,
             fileName: file.name
           })
         });
@@ -321,6 +317,46 @@ function App() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Fonction pour compresser une image
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculer les nouvelles dimensions (max 800px)
+        const maxSize = 800;
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Dessiner l'image compressée
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Convertir en base64 avec qualité 0.8
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(compressedDataUrl);
+      };
+      
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const removeUploadedFile = (index: number) => {

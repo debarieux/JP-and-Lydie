@@ -1,6 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
+// Limites de stockage
+const MAX_IMAGE_SIZE = 500 * 1024; // 500KB en base64
+const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB total
+const MAX_PHOTOS = 20; // Nombre maximum de photos
+
 // Fonction pour convertir une image en base64
 const convertImageToBase64 = (imageBuffer) => {
   return `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
@@ -11,6 +16,11 @@ const generateUniqueFileName = (originalName) => {
   const timestamp = Date.now();
   const extension = originalName.split('.').pop();
   return `photo_${timestamp}.${extension}`;
+};
+
+// Fonction pour vérifier la taille d'une image base64
+const getBase64Size = (base64String) => {
+  return Math.ceil((base64String.length * 3) / 4);
 };
 
 module.exports = (req, res) => {
@@ -36,30 +46,29 @@ module.exports = (req, res) => {
       return res.status(400).json({ error: "Données d'image manquantes" });
     }
 
+    // Vérifier la taille de l'image
+    const imageSize = getBase64Size(imageData);
+    console.log(`Taille de l'image: ${(imageSize / 1024).toFixed(2)}KB`);
+
+    if (imageSize > MAX_IMAGE_SIZE) {
+      return res.status(400).json({ 
+        error: `Image trop volumineuse. Taille maximale: ${(MAX_IMAGE_SIZE / 1024).toFixed(0)}KB. Taille actuelle: ${(imageSize / 1024).toFixed(2)}KB` 
+      });
+    }
+
     // Créer un nom de fichier unique
     const uniqueFileName = generateUniqueFileName(fileName || 'photo.jpg');
     
-    // Pour l'instant, on va utiliser des images d'exemple mais avec des noms uniques
-    // En production, il faudrait uploader vers un service comme Cloudinary, AWS S3, etc.
-    const sampleImages = [
-      "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop"
-    ];
-    
-    const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
-
-    // Retourner l'URL de l'image
+    // Stocker l'image en base64 directement
     const response = {
       success: true,
-      imageUrl: randomImage,
+      imageUrl: imageData, // Stockage direct en base64
       fileName: uniqueFileName,
-      message: "Image uploadée avec succès (simulation)"
+      imageSize: imageSize,
+      message: `Image uploadée avec succès (${(imageSize / 1024).toFixed(2)}KB)`
     };
 
-    console.log('Upload d\'image:', response);
+    console.log('Upload d\'image base64:', response.message);
     res.status(200).json(response);
 
   } catch (error) {
