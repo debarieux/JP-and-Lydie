@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/build",
+  "installCommand": "cd frontend && npm install",
+  "framework": "create-react-app",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "REACT_APP_TITLE": "Galerie Privée - Jean-Philippe & Lydie",
+    "REACT_APP_DEFAULT_PASSWORD": "Jean-Philippe & Lydie"
+  },
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18"
+    }
+  }
+} 

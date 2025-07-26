@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import { Photo } from './types';
 
@@ -11,6 +11,17 @@ interface PhotoCardProps {
 
 const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onZoom, onDelete, onToggleFavorite }) => {
   const [hovered, setHovered] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/hello")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Réponse de l'API /api/hello :", data);
+      })
+      .catch((err) => {
+        console.error("Erreur lors de l'appel à l'API /api/hello :", err);
+      });
+  }, []);
 
   return (
     <div
