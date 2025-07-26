@@ -25,11 +25,13 @@ function App() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fonction pour charger les photos depuis l'API
   const fetchPhotos = async () => {
     try {
       setLoading(true);
+      setIsRefreshing(true);
       console.log('🔄 Chargement des photos depuis l\'API...');
       
       const response = await fetch('/api/photos');
@@ -60,6 +62,7 @@ function App() {
       showNotification('Erreur lors du chargement des photos', 'error');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -68,17 +71,25 @@ function App() {
     fetchPhotos();
   }, []);
 
-  // Rafraîchir les données toutes les 30 secondes pour la synchronisation
+  // Rafraîchir les données toutes les 15 secondes pour la synchronisation
   useEffect(() => {
     const interval = setInterval(() => {
       if (isAuthenticated && currentView === 'gallery') {
-        console.log('Rafraîchissement automatique des données...');
+        console.log('🔄 Rafraîchissement automatique des données...');
         fetchPhotos();
       }
-    }, 30000); // 30 secondes
+    }, 15000); // 15 secondes au lieu de 30
 
     return () => clearInterval(interval);
   }, [isAuthenticated, currentView]);
+
+  // Rafraîchissement immédiat après changement de vue
+  useEffect(() => {
+    if (isAuthenticated && currentView === 'gallery') {
+      console.log('🔄 Rafraîchissement après changement de vue...');
+      fetchPhotos();
+    }
+  }, [currentView, isAuthenticated]);
 
   // Redirection basée sur l'authentification
   useEffect(() => {
@@ -131,19 +142,28 @@ function App() {
   const handleDelete = async (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
       try {
+        console.log('🗑️ Suppression de la photo:', id);
         const response = await fetch(`/api/photos?id=${id}`, {
           method: 'DELETE'
         });
         
         if (response.ok) {
-          // Recharger toutes les photos depuis l'API pour s'assurer de la synchronisation
+          console.log('✅ Photo supprimée avec succès');
+          // Rafraîchissement immédiat
           await fetchPhotos();
           showNotification('Photo supprimée avec succès', 'success');
+          
+          // Rafraîchissement supplémentaire après 1 seconde
+          setTimeout(async () => {
+            console.log('🔄 Vérification post-suppression...');
+            await fetchPhotos();
+          }, 1000);
         } else {
+          console.error('❌ Erreur lors de la suppression:', response.status);
           showNotification('Erreur lors de la suppression', 'error');
         }
       } catch (error) {
-        console.error('Erreur lors de la suppression:', error);
+        console.error('❌ Erreur lors de la suppression:', error);
         showNotification('Erreur lors de la suppression', 'error');
       }
     }
@@ -154,28 +174,37 @@ function App() {
     if (!photo) return;
 
     try {
+      console.log('⭐ Changement favori pour la photo:', id);
       const response = await fetch(`/api/photos?id=${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          favorite: !photo.isFavorite
+          isFavorite: !photo.isFavorite
         })
       });
 
       if (response.ok) {
-        // Recharger toutes les photos depuis l'API pour s'assurer de la synchronisation
+        console.log('✅ Favori mis à jour avec succès');
+        // Rafraîchissement immédiat
         await fetchPhotos();
         showNotification(
           photo.isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris', 
           'success'
         );
+        
+        // Rafraîchissement supplémentaire après 1 seconde
+        setTimeout(async () => {
+          console.log('🔄 Vérification post-favori...');
+          await fetchPhotos();
+        }, 1000);
       } else {
+        console.error('❌ Erreur lors de la mise à jour:', response.status);
         showNotification('Erreur lors de la mise à jour', 'error');
       }
     } catch (error) {
-      console.error('Erreur lors de la mise à jour:', error);
+      console.error('❌ Erreur lors de la mise à jour:', error);
       showNotification('Erreur lors de la mise à jour', 'error');
     }
   };
@@ -297,14 +326,23 @@ function App() {
       console.log('Toutes les photos uploadées, rechargement de la galerie...');
       // Recharger toutes les photos depuis l'API après l'upload
       await fetchPhotos();
-      console.log('Galerie rechargée avec succès');
+      console.log('✅ Galerie rechargée avec succès');
       
-      // Vérification supplémentaire
+      // Vérifications supplémentaires pour s'assurer de la synchronisation
       setTimeout(async () => {
-        console.log('Vérification finale des photos...');
+        console.log('🔄 Vérification post-upload (1s)...');
         await fetchPhotos();
-        console.log('Vérification terminée');
       }, 1000);
+      
+      setTimeout(async () => {
+        console.log('🔄 Vérification post-upload (3s)...');
+        await fetchPhotos();
+      }, 3000);
+      
+      setTimeout(async () => {
+        console.log('🔄 Vérification post-upload (5s)...');
+        await fetchPhotos();
+      }, 5000);
       
       setUploadedFiles([]);
       showNotification('Photos ajoutées avec succès !', 'success');
@@ -580,9 +618,17 @@ function App() {
       <div className="gallery-page">
         <header className="gallery-header">
           <h1 className="gallery-title">Notre Galerie Privée</h1>
-          <button onClick={handleLogout} className="logout-button">
-            Se déconnecter
-          </button>
+          <div className="gallery-header-actions">
+            {isRefreshing && (
+              <div className="refresh-indicator">
+                <div className="refresh-spinner"></div>
+                <span>Actualisation...</span>
+              </div>
+            )}
+            <button onClick={handleLogout} className="logout-button">
+              Se déconnecter
+            </button>
+          </div>
         </header>
 
         <main className="gallery-main">
