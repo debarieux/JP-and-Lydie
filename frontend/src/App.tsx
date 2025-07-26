@@ -29,10 +29,15 @@ function App() {
   // Fonction pour charger les photos depuis l'API
   const fetchPhotos = async () => {
     try {
+      console.log('Chargement des photos depuis l\'API...');
       const response = await fetch('/api/photos');
+      console.log('Réponse fetchPhotos:', response.status, response.statusText);
+      
       if (response.ok) {
         const data = await response.json();
         console.log('Photos chargées depuis l\'API:', data);
+        console.log('Nombre de photos:', data.length);
+        
         // Convertir le format de l'API vers le format du frontend
         const convertedPhotos = data.map((photo: any) => ({
           id: photo.id,
@@ -40,12 +45,16 @@ function App() {
           title: photo.alt,
           isFavorite: photo.favorite
         }));
+        
+        console.log('Photos converties:', convertedPhotos);
         setPhotos(convertedPhotos);
+        console.log('Photos mises à jour dans l\'état');
       } else {
-        console.error('Erreur lors du chargement des photos');
+        const errorText = await response.text();
+        console.error('Erreur lors du chargement des photos:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Erreur réseau:', error);
+      console.error('Erreur réseau lors du chargement:', error);
     } finally {
       setLoading(false);
     }
@@ -221,8 +230,13 @@ function App() {
     setIsUploading(true);
     
     try {
+      console.log('Début de l\'upload de', uploadedFiles.length, 'photos');
+      
       // Pour chaque fichier uploadé, créer une nouvelle photo via l'API
-      for (const file of uploadedFiles) {
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        console.log(`Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
+        
         // Utiliser une image d'exemple car URL.createObjectURL() ne fonctionne pas en production
         const sampleImages = [
           "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
@@ -236,9 +250,11 @@ function App() {
         
         const newPhoto = {
           src: randomImage,
-          alt: `Photo ${photos.length + 1}`,
+          alt: `Photo uploadée ${Date.now() + i}`, // Nom unique basé sur le timestamp
           favorite: false
         };
+
+        console.log('Envoi de la photo à l\'API:', newPhoto);
 
         const response = await fetch('/api/photos', {
           method: 'POST',
@@ -252,7 +268,7 @@ function App() {
         
         if (response.ok) {
           const createdPhoto = await response.json();
-          console.log('Photo créée:', createdPhoto);
+          console.log('Photo créée avec succès:', createdPhoto);
         } else {
           const errorText = await response.text();
           console.error('Erreur API:', errorText);
@@ -260,8 +276,10 @@ function App() {
         }
       }
       
+      console.log('Toutes les photos uploadées, rechargement de la galerie...');
       // Recharger toutes les photos depuis l'API après l'upload
       await fetchPhotos();
+      console.log('Galerie rechargée avec succès');
       
       setUploadedFiles([]);
       showNotification('Photos ajoutées avec succès !', 'success');
