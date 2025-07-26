@@ -298,23 +298,33 @@ function App() {
         try {
           console.log(`📤 Préparation upload photo ${index + 1}/${uploadedFiles.length}:`, file.name);
           
-          // Compresser l'image
+          // Compresser l'image avec timeout pour mobile
           console.log(`🔄 Compression de ${file.name}...`);
-          const compressedImageData = await compressImage(file);
+          const compressedImageData = await Promise.race([
+            compressImage(file),
+            new Promise<string>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout compression')), 30000)
+            )
+          ]);
           console.log(`📦 Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
           
-          // Upload de l'image via l'API d'upload
+          // Upload de l'image via l'API d'upload avec timeout
           console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              imageData: compressedImageData,
-              fileName: file.name
-            })
-          });
+          const uploadResponse = await Promise.race([
+            fetch('/api/upload', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                imageData: compressedImageData,
+                fileName: file.name
+              })
+            }),
+            new Promise<Response>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout upload API')), 45000)
+            )
+          ]);
           
           console.log(`📡 Réponse API upload pour ${file.name}:`, uploadResponse.status, uploadResponse.statusText);
           
@@ -336,13 +346,18 @@ function App() {
 
           console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
 
-          const response = await fetch('/api/photos', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(newPhoto)
-          });
+          const response = await Promise.race([
+            fetch('/api/photos', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(newPhoto)
+            }),
+            new Promise<Response>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout API photos')), 15000)
+            )
+          ]);
 
           console.log(`📡 Réponse API photos pour ${file.name}:`, response.status, response.statusText);
           
@@ -395,36 +410,56 @@ function App() {
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
-      img.onload = () => {
-        // Réduire la taille maximale à 600px pour accélérer l'upload
-        const maxSize = 600;
-        let { width, height } = img;
-        
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Dessiner l'image compressée
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        // Réduire la qualité à 0.6 pour un fichier plus petit
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-        resolve(compressedDataUrl);
+      // Gestion d'erreur pour mobile
+      img.onerror = (error) => {
+        console.error('❌ Erreur lors du chargement de l\'image:', error);
+        reject(new Error('Impossible de charger l\'image'));
       };
       
-      img.onerror = reject;
-      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          // Réduire la taille maximale à 400px pour mobile (plus petit)
+          const maxSize = window.innerWidth <= 768 ? 400 : 600;
+          let { width, height } = img;
+          
+          if (width > height) {
+            if (width > maxSize) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Dessiner l'image compressée
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Qualité réduite pour mobile
+          const quality = window.innerWidth <= 768 ? 0.5 : 0.6;
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          
+          console.log(`📱 Compression mobile: ${file.name} -> ${width}x${height}px, qualité: ${quality}`);
+          resolve(compressedDataUrl);
+        } catch (error) {
+          console.error('❌ Erreur lors de la compression:', error);
+          reject(error);
+        }
+      };
+      
+      // Créer l'URL de l'objet pour mobile
+      const objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+      
+      // Nettoyer l'URL après chargement
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+      };
     });
   };
 
