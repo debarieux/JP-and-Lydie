@@ -171,10 +171,16 @@ function App() {
 
   const handleToggleFavorite = async (id: number) => {
     const photo = photos.find(p => p.id === id);
-    if (!photo) return;
+    if (!photo) {
+      console.error('❌ Photo non trouvée pour l\'ID:', id);
+      return;
+    }
 
     try {
       console.log('⭐ Changement favori pour la photo:', id);
+      console.log('📸 Photo actuelle:', photo);
+      console.log('🔄 Nouvel état favori:', !photo.isFavorite);
+      
       const response = await fetch(`/api/photos?id=${id}`, {
         method: 'PUT',
         headers: {
@@ -185,8 +191,12 @@ function App() {
         })
       });
 
+      console.log('📡 Réponse API:', response.status, response.statusText);
+
       if (response.ok) {
-        console.log('✅ Favori mis à jour avec succès');
+        const updatedPhoto = await response.json();
+        console.log('✅ Photo mise à jour:', updatedPhoto);
+        
         // Rafraîchissement immédiat
         await fetchPhotos();
         showNotification(
@@ -200,7 +210,8 @@ function App() {
           await fetchPhotos();
         }, 1000);
       } else {
-        console.error('❌ Erreur lors de la mise à jour:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Erreur lors de la mise à jour:', response.status, errorText);
         showNotification('Erreur lors de la mise à jour', 'error');
       }
     } catch (error) {

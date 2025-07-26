@@ -9,7 +9,18 @@ const loadPhotos = () => {
   try {
     if (fs.existsSync(STORAGE_FILE)) {
       const data = fs.readFileSync(STORAGE_FILE, 'utf8');
-      return JSON.parse(data);
+      const photos = JSON.parse(data);
+      
+      // Migration : convertir les anciennes propriétés vers le nouveau format
+      const migratedPhotos = photos.map(photo => ({
+        id: photo.id,
+        url: photo.url || photo.src, // Support de l'ancienne propriété src
+        title: photo.title || photo.alt, // Support de l'ancienne propriété alt
+        isFavorite: photo.isFavorite !== undefined ? photo.isFavorite : (photo.favorite || false) // Migration de favorite vers isFavorite
+      }));
+      
+      console.log('Photos chargées et migrées:', migratedPhotos.length);
+      return migratedPhotos;
     }
   } catch (error) {
     console.error('Erreur lors du chargement des photos:', error);
