@@ -2,20 +2,38 @@
 let photos = [
   {
     id: 1,
-    src: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
-    alt: "Paysage montagneux",
+    src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+    alt: "Notre premier rendez-vous",
     favorite: false
   },
   {
     id: 2,
-    src: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop",
-    alt: "Forêt verdoyante",
+    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+    alt: "Nos fiançailles",
     favorite: true
   },
   {
     id: 3,
-    src: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
-    alt: "Lac de montagne",
+    src: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
+    alt: "Préparation du mariage",
+    favorite: false
+  },
+  {
+    id: 4,
+    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+    alt: "Le grand jour",
+    favorite: false
+  },
+  {
+    id: 5,
+    src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+    alt: "Notre voyage de noces",
+    favorite: false
+  },
+  {
+    id: 6,
+    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+    alt: "Notre première maison",
     favorite: false
   }
 ];

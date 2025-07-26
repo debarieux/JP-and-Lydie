@@ -209,8 +209,19 @@ function App() {
     try {
       // Pour chaque fichier uploadé, créer une nouvelle photo via l'API
       for (const file of uploadedFiles) {
+        // Utiliser une image d'exemple car URL.createObjectURL() ne fonctionne pas en production
+        const sampleImages = [
+          "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+          "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+          "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
+          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
+          "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop"
+        ];
+        
+        const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
+        
         const newPhoto = {
-          src: URL.createObjectURL(file), // En production, il faudrait uploader l'image sur un service
+          src: randomImage,
           alt: `Photo ${photos.length + 1}`,
           favorite: false
         };
@@ -311,6 +322,10 @@ function App() {
                         src={URL.createObjectURL(file)}
                         alt={file.name}
                         className="uploaded-file-preview"
+                        onError={(e) => {
+                          // Fallback si l'image ne charge pas
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop";
+                        }}
                       />
                       <div className="uploaded-file-name">{file.name}</div>
                       <button
