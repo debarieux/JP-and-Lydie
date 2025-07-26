@@ -288,72 +288,86 @@ function App() {
     }
 
     setIsUploading(true);
+    console.log('🔄 Début du processus d\'upload...');
     
     try {
       console.log('🚀 Début de l\'upload de', uploadedFiles.length, 'photos en parallèle');
       
       // Traiter toutes les images en parallèle pour accélérer l'upload
       const uploadPromises = uploadedFiles.map(async (file, index) => {
-        console.log(`📤 Préparation upload photo ${index + 1}/${uploadedFiles.length}:`, file.name);
-        
-        // Compresser l'image
-        const compressedImageData = await compressImage(file);
-        console.log(`📦 Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
-        
-        // Upload de l'image via l'API d'upload
-        const uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            imageData: compressedImageData,
-            fileName: file.name
-          })
-        });
-        
-        if (!uploadResponse.ok) {
-          throw new Error(`Erreur lors de l'upload de l'image: ${uploadResponse.status}`);
-        }
-        
-        const uploadResult = await uploadResponse.json();
-        console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
-        
-        // Créer la photo dans la galerie avec l'URL de l'image uploadée
-        const newPhoto = {
-          url: uploadResult.imageUrl,
-          title: `Photo uploadée ${Date.now() + index}`,
-          isFavorite: false
-        };
+        try {
+          console.log(`📤 Préparation upload photo ${index + 1}/${uploadedFiles.length}:`, file.name);
+          
+          // Compresser l'image
+          console.log(`🔄 Compression de ${file.name}...`);
+          const compressedImageData = await compressImage(file);
+          console.log(`📦 Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
+          
+          // Upload de l'image via l'API d'upload
+          console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              imageData: compressedImageData,
+              fileName: file.name
+            })
+          });
+          
+          console.log(`📡 Réponse API upload pour ${file.name}:`, uploadResponse.status, uploadResponse.statusText);
+          
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            console.error(`❌ Erreur API upload pour ${file.name}:`, errorText);
+            throw new Error(`Erreur lors de l'upload de l'image: ${uploadResponse.status} - ${errorText}`);
+          }
+          
+          const uploadResult = await uploadResponse.json();
+          console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
+          
+          // Créer la photo dans la galerie avec l'URL de l'image uploadée
+          const newPhoto = {
+            url: uploadResult.imageUrl,
+            title: `Photo uploadée ${Date.now() + index}`,
+            isFavorite: false
+          };
 
-        console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
+          console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
 
-        const response = await fetch('/api/photos', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(newPhoto)
-        });
+          const response = await fetch('/api/photos', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newPhoto)
+          });
 
-        console.log(`📡 Réponse API photos pour ${file.name}:`, response.status);
-        
-        if (response.ok) {
-          const createdPhoto = await response.json();
-          console.log(`✅ Photo créée avec succès:`, createdPhoto);
-          return createdPhoto;
-        } else {
-          const errorText = await response.text();
-          console.error(`❌ Erreur API photos pour ${file.name}:`, errorText);
-          throw new Error(`Erreur lors de l'ajout de la photo: ${response.status}`);
+          console.log(`📡 Réponse API photos pour ${file.name}:`, response.status, response.statusText);
+          
+          if (response.ok) {
+            const createdPhoto = await response.json();
+            console.log(`✅ Photo créée avec succès:`, createdPhoto);
+            return createdPhoto;
+          } else {
+            const errorText = await response.text();
+            console.error(`❌ Erreur API photos pour ${file.name}:`, errorText);
+            throw new Error(`Erreur lors de l'ajout de la photo: ${response.status} - ${errorText}`);
+          }
+        } catch (error) {
+          console.error(`❌ Erreur pour ${file.name}:`, error);
+          throw error;
         }
       });
       
       // Attendre que tous les uploads soient terminés
+      console.log('⏳ Attente de la fin de tous les uploads...');
       const results = await Promise.all(uploadPromises);
       console.log(`🎉 Toutes les ${results.length} photos uploadées avec succès !`);
       
       // Recharger la galerie une seule fois après tous les uploads
+      console.log('🔄 Rechargement de la galerie...');
       await fetchPhotos();
       console.log('✅ Galerie rechargée avec succès');
       
@@ -366,8 +380,10 @@ function App() {
       
     } catch (error) {
       console.error('❌ Erreur lors de l\'upload:', error);
-      showNotification('Erreur lors de l\'upload des photos', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      showNotification(`Erreur lors de l'upload des photos: ${errorMessage}`, 'error');
     } finally {
+      console.log('🏁 Fin du processus d\'upload');
       setIsUploading(false);
     }
   };

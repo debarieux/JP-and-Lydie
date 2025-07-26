@@ -103,18 +103,26 @@ module.exports = (req, res) => {
   }
 
   try {
+    console.log('📥 API upload appelée');
+    
     // Récupérer les données de l'image (base64)
     const { imageData, fileName } = req.body;
 
     if (!imageData) {
+      console.error('❌ Données d\'image manquantes');
       return res.status(400).json({ error: "Données d'image manquantes" });
     }
+
+    console.log(`📦 Données reçues pour: ${fileName}`);
 
     // Vérifier la taille de l'image
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
     const imageSize = Math.ceil((base64Data.length * 3) / 4);
 
+    console.log(`📏 Taille de l'image: ${(imageSize / 1024 / 1024).toFixed(2)}MB`);
+
     if (imageSize > MAX_IMAGE_SIZE) {
+      console.error(`❌ Image trop volumineuse: ${(imageSize / 1024 / 1024).toFixed(2)}MB`);
       return res.status(400).json({ 
         error: `Image trop volumineuse. Taille maximale: ${(MAX_IMAGE_SIZE / 1024 / 1024).toFixed(0)}MB. Taille actuelle: ${(imageSize / 1024 / 1024).toFixed(2)}MB` 
       });
@@ -122,10 +130,14 @@ module.exports = (req, res) => {
 
     // Créer un nom de fichier unique
     const uniqueFileName = generateUniqueFileName(fileName || 'photo.jpg');
+    console.log(`📝 Nom de fichier généré: ${uniqueFileName}`);
     
     // Upload vers ImageKit.io
+    console.log('🚀 Début upload vers ImageKit...');
     uploadToImageKit(imageData, uniqueFileName)
       .then(uploadResult => {
+        console.log('✅ Upload ImageKit réussi:', uploadResult);
+        
         const response = {
           success: true,
           imageUrl: uploadResult.url,
@@ -134,15 +146,16 @@ module.exports = (req, res) => {
           imageSize: imageSize
         };
 
+        console.log('📤 Envoi de la réponse:', response);
         res.status(200).json(response);
       })
       .catch(error => {
-        console.error('Erreur upload ImageKit:', error);
+        console.error('❌ Erreur upload ImageKit:', error);
         res.status(500).json({ error: error.message });
       });
 
   } catch (error) {
-    console.error('Erreur lors de l\'upload:', error);
+    console.error('❌ Erreur lors de l\'upload:', error);
     res.status(500).json({ error: "Erreur lors de l'upload de l'image" });
   }
 }; 
