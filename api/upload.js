@@ -41,15 +41,21 @@ const uploadToImageKit = async (imageData, fileName) => {
     body += 'galerie-privee';
     body += `\r\n--${boundary}--\r\n`;
     
-    // Upload via API REST ImageKit
+    // Upload via API REST ImageKit avec timeout réduit
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes max
+    
     const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${Buffer.from(IMAGEKIT_PRIVATE_KEY + ':').toString('base64')}`,
         'Content-Type': `multipart/form-data; boundary=${boundary}`
       },
-      body: Buffer.from(body, 'binary')
+      body: Buffer.from(body, 'binary'),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -58,7 +64,6 @@ const uploadToImageKit = async (imageData, fileName) => {
     }
     
     const result = await response.json();
-    console.log('Réponse ImageKit:', result);
     
     return {
       success: true,
@@ -108,8 +113,6 @@ module.exports = (req, res) => {
     // Vérifier la taille de l'image
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
     const imageSize = Math.ceil((base64Data.length * 3) / 4);
-    
-    console.log(`Taille de l'image: ${(imageSize / 1024 / 1024).toFixed(2)}MB`);
 
     if (imageSize > MAX_IMAGE_SIZE) {
       return res.status(400).json({ 
@@ -128,12 +131,9 @@ module.exports = (req, res) => {
           imageUrl: uploadResult.url,
           fileName: uploadResult.fileName,
           fileId: uploadResult.fileId,
-          imageSize: imageSize,
-          message: `Image uploadée avec succès vers ImageKit (${(imageSize / 1024 / 1024).toFixed(2)}MB)`
+          imageSize: imageSize
         };
 
-        console.log('Upload ImageKit réussi:', response.message);
-        console.log('URL de l\'image:', uploadResult.url);
         res.status(200).json(response);
       })
       .catch(error => {

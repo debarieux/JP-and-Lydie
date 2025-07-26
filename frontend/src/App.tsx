@@ -290,18 +290,15 @@ function App() {
     setIsUploading(true);
     
     try {
-      console.log('Début de l\'upload de', uploadedFiles.length, 'photos');
+      console.log('🚀 Début de l\'upload de', uploadedFiles.length, 'photos en parallèle');
       
-      // Pour chaque fichier uploadé, créer une nouvelle photo via l'API
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        const file = uploadedFiles[i];
-        console.log(`Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
+      // Traiter toutes les images en parallèle pour accélérer l'upload
+      const uploadPromises = uploadedFiles.map(async (file, index) => {
+        console.log(`📤 Préparation upload photo ${index + 1}/${uploadedFiles.length}:`, file.name);
         
-        // Compresser et convertir le fichier en base64
+        // Compresser l'image
         const compressedImageData = await compressImage(file);
-        console.log(`Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
-        
-        console.log('Image convertie en base64, envoi à l\'API d\'upload...');
+        console.log(`📦 Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
         
         // Upload de l'image via l'API d'upload
         const uploadResponse = await fetch('/api/upload', {
@@ -320,16 +317,16 @@ function App() {
         }
         
         const uploadResult = await uploadResponse.json();
-        console.log('Upload réussi:', uploadResult);
+        console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
         
         // Créer la photo dans la galerie avec l'URL de l'image uploadée
         const newPhoto = {
           url: uploadResult.imageUrl,
-          title: `Photo uploadée ${Date.now() + i}`,
-        isFavorite: false
+          title: `Photo uploadée ${Date.now() + index}`,
+          isFavorite: false
         };
 
-        console.log('Envoi de la photo à l\'API photos:', newPhoto);
+        console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
 
         const response = await fetch('/api/photos', {
           method: 'POST',
@@ -339,46 +336,37 @@ function App() {
           body: JSON.stringify(newPhoto)
         });
 
-        console.log('Réponse API photos:', response.status, response.statusText);
+        console.log(`📡 Réponse API photos pour ${file.name}:`, response.status);
         
         if (response.ok) {
           const createdPhoto = await response.json();
-          console.log('Photo créée avec succès:', createdPhoto);
+          console.log(`✅ Photo créée avec succès:`, createdPhoto);
+          return createdPhoto;
         } else {
           const errorText = await response.text();
-          console.error('Erreur API photos:', errorText);
+          console.error(`❌ Erreur API photos pour ${file.name}:`, errorText);
           throw new Error(`Erreur lors de l'ajout de la photo: ${response.status}`);
         }
-      }
+      });
       
-      console.log('Toutes les photos uploadées, rechargement de la galerie...');
-      // Recharger toutes les photos depuis l'API après l'upload
+      // Attendre que tous les uploads soient terminés
+      const results = await Promise.all(uploadPromises);
+      console.log(`🎉 Toutes les ${results.length} photos uploadées avec succès !`);
+      
+      // Recharger la galerie une seule fois après tous les uploads
       await fetchPhotos();
       console.log('✅ Galerie rechargée avec succès');
       
       markAction(); // Marquer l'action d'upload
       
-      // Vérifications supplémentaires pour s'assurer de la synchronisation
-      setTimeout(async () => {
-        console.log('🔄 Vérification post-upload (2s)...');
-        await fetchPhotos();
-      }, 2000);
-      
-      setTimeout(async () => {
-        console.log('🔄 Vérification post-upload (5s)...');
-        await fetchPhotos();
-      }, 5000);
-      
-      setTimeout(async () => {
-        console.log('🔄 Vérification post-upload (10s)...');
-        await fetchPhotos();
-      }, 10000);
-      
+      // Nettoyer les fichiers uploadés
       setUploadedFiles([]);
-      showNotification('Photos ajoutées avec succès !', 'success');
+      
+      showNotification(`${results.length} photo(s) uploadée(s) avec succès !`, 'success');
+      
     } catch (error) {
-      console.error('Erreur lors de l\'upload:', error);
-      showNotification('Erreur lors de l\'ajout des photos', 'error');
+      console.error('❌ Erreur lors de l\'upload:', error);
+      showNotification('Erreur lors de l\'upload des photos', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -392,8 +380,8 @@ function App() {
       const img = new Image();
       
       img.onload = () => {
-        // Calculer les nouvelles dimensions (max 800px)
-        const maxSize = 800;
+        // Réduire la taille maximale à 600px pour accélérer l'upload
+        const maxSize = 600;
         let { width, height } = img;
         
         if (width > height) {
@@ -414,8 +402,8 @@ function App() {
         // Dessiner l'image compressée
         ctx?.drawImage(img, 0, 0, width, height);
         
-        // Convertir en base64 avec qualité 0.8
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        // Réduire la qualité à 0.6 pour un fichier plus petit
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
         resolve(compressedDataUrl);
       };
       
