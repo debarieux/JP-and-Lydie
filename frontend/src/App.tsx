@@ -534,6 +534,10 @@ function App() {
         </header>
 
         <main className="gallery-main">
+          {(() => {
+            console.log('État loading:', loading, 'Nombre de photos:', photos.length);
+            return null;
+          })()}
           {loading ? (
             <div className="loading-container">
               <div className="loading-spinner"></div>
@@ -541,15 +545,25 @@ function App() {
             </div>
           ) : (
             <div className="gallery-grid">
-              {photos.map(photo => (
-                <PhotoCard
-                  key={photo.id}
-                  photo={photo}
-                  onZoom={handleZoom}
-                  onDelete={handleDelete}
-                  onToggleFavorite={handleToggleFavorite}
-                />
-              ))}
+              {(() => {
+                console.log('Affichage de', photos.length, 'photos:', photos);
+                return null;
+              })()}
+              {photos.length === 0 ? (
+                <div className="empty-gallery">
+                  <p>Aucune photo dans la galerie</p>
+                </div>
+              ) : (
+                photos.map(photo => (
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    onZoom={handleZoom}
+                    onDelete={handleDelete}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                ))
+              )}
             </div>
           )}
         </main>
