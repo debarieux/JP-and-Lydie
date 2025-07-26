@@ -243,24 +243,43 @@ function App() {
         const file = uploadedFiles[i];
         console.log(`Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
         
-        // Utiliser une image d'exemple car URL.createObjectURL() ne fonctionne pas en production
-        const sampleImages = [
-          "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop",
-          "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop"
-        ];
+        // Convertir le fichier en base64
+        const reader = new FileReader();
+        const imageData = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
         
-        const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
+        console.log('Image convertie en base64, envoi à l\'API d\'upload...');
         
+        // Upload de l'image via l'API d'upload
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            imageData: imageData,
+            fileName: file.name
+          })
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error(`Erreur lors de l'upload de l'image: ${uploadResponse.status}`);
+        }
+        
+        const uploadResult = await uploadResponse.json();
+        console.log('Upload réussi:', uploadResult);
+        
+        // Créer la photo dans la galerie avec l'URL de l'image uploadée
         const newPhoto = {
-          src: randomImage,
-          alt: `Photo uploadée ${Date.now() + i}`, // Nom unique basé sur le timestamp
+          src: uploadResult.imageUrl,
+          alt: `Photo uploadée ${Date.now() + i}`,
           favorite: false
         };
 
-        console.log('Envoi de la photo à l\'API:', newPhoto);
+        console.log('Envoi de la photo à l\'API photos:', newPhoto);
 
         const response = await fetch('/api/photos', {
           method: 'POST',
@@ -270,14 +289,14 @@ function App() {
           body: JSON.stringify(newPhoto)
         });
 
-        console.log('Réponse API:', response.status, response.statusText);
+        console.log('Réponse API photos:', response.status, response.statusText);
         
         if (response.ok) {
           const createdPhoto = await response.json();
           console.log('Photo créée avec succès:', createdPhoto);
         } else {
           const errorText = await response.text();
-          console.error('Erreur API:', errorText);
+          console.error('Erreur API photos:', errorText);
           throw new Error(`Erreur lors de l'ajout de la photo: ${response.status}`);
         }
       }
