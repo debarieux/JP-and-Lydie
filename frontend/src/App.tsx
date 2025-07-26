@@ -18,49 +18,41 @@ function App() {
 
   const correctPassword = 'Jean-Philippe & Lydie';
 
-  const [photos, setPhotos] = useState<Photo[]>([
-    {
-      id: 1,
-      url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
-      title: 'Notre premier rendez-vous',
-      isFavorite: false
-    },
-    {
-      id: 2,
-      url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400',
-      title: 'Nos fiançailles',
-      isFavorite: false
-    },
-    {
-      id: 3,
-      url: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400',
-      title: 'Préparation du mariage',
-      isFavorite: false
-    },
-    {
-      id: 4,
-      url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400',
-      title: 'Le grand jour',
-      isFavorite: false
-    },
-    {
-      id: 5,
-      url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
-      title: 'Notre voyage de noces',
-      isFavorite: false
-    },
-    {
-      id: 6,
-      url: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400',
-      title: 'Notre première maison',
-      isFavorite: false
-    }
-  ]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [zoomPhoto, setZoomPhoto] = useState<Photo | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Charger les photos depuis l'API
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      try {
+        const response = await fetch('/api/photos');
+        if (response.ok) {
+          const data = await response.json();
+          // Convertir le format de l'API vers le format du frontend
+          const convertedPhotos = data.map((photo: any) => ({
+            id: photo.id,
+            url: photo.src,
+            title: photo.alt,
+            isFavorite: photo.favorite
+          }));
+          setPhotos(convertedPhotos);
+        } else {
+          console.error('Erreur lors du chargement des photos');
+        }
+      } catch (error) {
+        console.error('Erreur réseau:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPhotos();
+  }, []);
 
   // Redirection basée sur l'authentification
   useEffect(() => {
@@ -110,23 +102,55 @@ function App() {
   const handleZoom = (photo: Photo) => setZoomPhoto(photo);
   const handleCloseZoom = () => setZoomPhoto(null);
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
-      setPhotos(photos.filter(photo => photo.id !== id));
-      showNotification('Photo supprimée avec succès', 'success');
+      try {
+        const response = await fetch(`/api/photos?id=${id}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          setPhotos(photos.filter(photo => photo.id !== id));
+          showNotification('Photo supprimée avec succès', 'success');
+        } else {
+          showNotification('Erreur lors de la suppression', 'error');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        showNotification('Erreur lors de la suppression', 'error');
+      }
     }
   };
 
-  const handleToggleFavorite = (id: number) => {
-    setPhotos(photos.map(photo => 
-      photo.id === id ? { ...photo, isFavorite: !photo.isFavorite } : photo
-    ));
+  const handleToggleFavorite = async (id: number) => {
     const photo = photos.find(p => p.id === id);
-    if (photo) {
-      showNotification(
-        photo.isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris', 
-        'success'
-      );
+    if (!photo) return;
+
+    try {
+      const response = await fetch(`/api/photos?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          favorite: !photo.isFavorite
+        })
+      });
+
+      if (response.ok) {
+        setPhotos(photos.map(photo => 
+          photo.id === id ? { ...photo, isFavorite: !photo.isFavorite } : photo
+        ));
+        showNotification(
+          photo.isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris', 
+          'success'
+        );
+      } else {
+        showNotification('Erreur lors de la mise à jour', 'error');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      showNotification('Erreur lors de la mise à jour', 'error');
     }
   };
 
@@ -182,20 +206,46 @@ function App() {
 
     setIsUploading(true);
     
-    // Simulation d'upload
-    setTimeout(() => {
-      const newPhotos: Photo[] = uploadedFiles.map((file, index) => ({
-        id: Date.now() + index,
-        url: URL.createObjectURL(file),
-        title: `Photo ${photos.length + index + 1}`,
-        isFavorite: false
-      }));
+    try {
+      // Pour chaque fichier uploadé, créer une nouvelle photo via l'API
+      for (const file of uploadedFiles) {
+        const newPhoto = {
+          src: URL.createObjectURL(file), // En production, il faudrait uploader l'image sur un service
+          alt: `Photo ${photos.length + 1}`,
+          favorite: false
+        };
+
+        const response = await fetch('/api/photos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(newPhoto)
+        });
+
+        if (response.ok) {
+          const createdPhoto = await response.json();
+          // Convertir le format de l'API vers le format du frontend
+          const convertedPhoto = {
+            id: createdPhoto.id,
+            url: createdPhoto.src,
+            title: createdPhoto.alt,
+            isFavorite: createdPhoto.favorite
+          };
+          setPhotos(prev => [...prev, convertedPhoto]);
+        } else {
+          throw new Error('Erreur lors de l\'ajout de la photo');
+        }
+      }
       
-      setPhotos(prev => [...prev, ...newPhotos]);
       setUploadedFiles([]);
-      setIsUploading(false);
       showNotification('Photos ajoutées avec succès !', 'success');
-    }, 1000);
+    } catch (error) {
+      console.error('Erreur lors de l\'upload:', error);
+      showNotification('Erreur lors de l\'ajout des photos', 'error');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const removeUploadedFile = (index: number) => {
@@ -424,17 +474,24 @@ function App() {
         </header>
 
         <main className="gallery-main">
-          <div className="gallery-grid">
-            {photos.map(photo => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                onZoom={handleZoom}
-                onDelete={handleDelete}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Chargement de la galerie...</p>
+            </div>
+          ) : (
+            <div className="gallery-grid">
+              {photos.map(photo => (
+                <PhotoCard
+                  key={photo.id}
+                  photo={photo}
+                  onZoom={handleZoom}
+                  onDelete={handleDelete}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              ))}
+            </div>
+          )}
         </main>
 
         {zoomPhoto && (
