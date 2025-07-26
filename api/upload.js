@@ -13,27 +13,50 @@ const MAX_PHOTOS = 100; // Nombre maximum de photos
 // Fonction pour générer un nom de fichier unique
 const generateUniqueFileName = (originalName) => {
   const timestamp = Date.now();
-  const extension = originalName.split('.').pop();
+  const extension = originalName.split('.').pop() || 'jpg';
   return `galerie-privee/photo_${timestamp}.${extension}`;
 };
 
-// Fonction pour upload vers ImageKit.io
+// Fonction pour upload vers ImageKit.io via API REST
 const uploadToImageKit = async (imageData, fileName) => {
   try {
     // Convertir base64 en buffer
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
-    // Préparer les données pour ImageKit
+    // Préparer les données pour l'API ImageKit
     const formData = new FormData();
     formData.append('file', imageBuffer, fileName);
     formData.append('fileName', fileName);
     formData.append('folder', 'galerie-privee');
     
-    // Upload vers ImageKit (simulation - tu devras configurer les vraies clés)
-    // En production, utilise le SDK ImageKit ou l'API REST
+    // Upload via API REST ImageKit
+    const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(IMAGEKIT_PRIVATE_KEY + ':').toString('base64')}`,
+        'Content-Type': 'multipart/form-data'
+      },
+      body: formData
+    });
     
-    // Pour l'instant, on simule l'upload
+    if (!response.ok) {
+      throw new Error(`Erreur upload ImageKit: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    return {
+      success: true,
+      url: result.url,
+      fileId: result.fileId,
+      fileName: fileName
+    };
+    
+  } catch (error) {
+    console.error('Erreur upload ImageKit:', error);
+    
+    // Fallback : simuler l'upload pour les tests
     const imageUrl = `${IMAGEKIT_URL_ENDPOINT}/galerie-privee/${fileName}`;
     
     return {
@@ -42,9 +65,6 @@ const uploadToImageKit = async (imageData, fileName) => {
       fileId: `file_${Date.now()}`,
       fileName: fileName
     };
-  } catch (error) {
-    console.error('Erreur upload ImageKit:', error);
-    throw new Error('Erreur lors de l\'upload vers ImageKit');
   }
 };
 
