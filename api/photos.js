@@ -1,42 +1,73 @@
-// Stockage temporaire en mémoire (en production, utilisez une vraie base de données)
-let photos = [
-  {
-    id: 1,
-    src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-    alt: "Notre premier rendez-vous",
-    favorite: false
-  },
-  {
-    id: 2,
-    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-    alt: "Nos fiançailles",
-    favorite: true
-  },
-  {
-    id: 3,
-    src: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
-    alt: "Préparation du mariage",
-    favorite: false
-  },
-  {
-    id: 4,
-    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-    alt: "Le grand jour",
-    favorite: false
-  },
-  {
-    id: 5,
-    src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-    alt: "Notre voyage de noces",
-    favorite: false
-  },
-  {
-    id: 6,
-    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-    alt: "Notre première maison",
-    favorite: false
+const fs = require('fs');
+const path = require('path');
+
+// Chemin vers le fichier de stockage persistant
+const STORAGE_FILE = path.join(process.cwd(), 'photos-data.json');
+
+// Fonction pour charger les photos depuis le fichier
+const loadPhotos = () => {
+  try {
+    if (fs.existsSync(STORAGE_FILE)) {
+      const data = fs.readFileSync(STORAGE_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des photos:', error);
   }
-];
+  
+  // Données par défaut si le fichier n'existe pas
+  return [
+    {
+      id: 1,
+      src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+      alt: "Notre premier rendez-vous",
+      favorite: false
+    },
+    {
+      id: 2,
+      src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+      alt: "Nos fiançailles",
+      favorite: true
+    },
+    {
+      id: 3,
+      src: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
+      alt: "Préparation du mariage",
+      favorite: false
+    },
+    {
+      id: 4,
+      src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+      alt: "Le grand jour",
+      favorite: false
+    },
+    {
+      id: 5,
+      src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+      alt: "Notre voyage de noces",
+      favorite: false
+    },
+    {
+      id: 6,
+      src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+      alt: "Notre première maison",
+      favorite: false
+    }
+  ];
+};
+
+// Fonction pour sauvegarder les photos dans le fichier
+const savePhotos = (photos) => {
+  try {
+    fs.writeFileSync(STORAGE_FILE, JSON.stringify(photos, null, 2));
+    console.log('Photos sauvegardées avec succès');
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde des photos:', error);
+  }
+};
+
+// Charger les photos au démarrage
+let photos = loadPhotos();
 
 module.exports = (req, res) => {
   // Configuration CORS
@@ -54,6 +85,7 @@ module.exports = (req, res) => {
   switch (method) {
     case 'GET':
       // Récupérer toutes les photos
+      console.log('GET /api/photos - Photos récupérées:', photos.length);
       res.status(200).json(photos);
       break;
 
@@ -67,8 +99,11 @@ module.exports = (req, res) => {
           favorite: req.body.favorite || false
         };
         photos.push(newPhoto);
+        savePhotos(photos); // Sauvegarder immédiatement
+        console.log('POST /api/photos - Nouvelle photo ajoutée:', newPhoto);
         res.status(201).json(newPhoto);
       } catch (error) {
+        console.error('Erreur lors de l\'ajout de la photo:', error);
         res.status(400).json({ error: "Données invalides" });
       }
       break;
@@ -84,8 +119,11 @@ module.exports = (req, res) => {
         }
 
         photos[photoIndex] = { ...photos[photoIndex], ...req.body };
+        savePhotos(photos); // Sauvegarder immédiatement
+        console.log('PUT /api/photos - Photo mise à jour:', photos[photoIndex]);
         res.status(200).json(photos[photoIndex]);
       } catch (error) {
+        console.error('Erreur lors de la mise à jour:', error);
         res.status(400).json({ error: "Données invalides" });
       }
       break;
@@ -101,8 +139,11 @@ module.exports = (req, res) => {
         }
 
         const deletedPhoto = photos.splice(photoIndex, 1)[0];
+        savePhotos(photos); // Sauvegarder immédiatement
+        console.log('DELETE /api/photos - Photo supprimée:', deletedPhoto);
         res.status(200).json(deletedPhoto);
       } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
         res.status(400).json({ error: "ID invalide" });
       }
       break;

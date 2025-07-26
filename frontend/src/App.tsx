@@ -56,6 +56,18 @@ function App() {
     fetchPhotos();
   }, []);
 
+  // Rafraîchir les données toutes les 30 secondes pour la synchronisation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isAuthenticated && currentView === 'gallery') {
+        console.log('Rafraîchissement automatique des données...');
+        fetchPhotos();
+      }
+    }, 30000); // 30 secondes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, currentView]);
+
   // Redirection basée sur l'authentification
   useEffect(() => {
     if (currentView === 'gallery' && !isAuthenticated) {
@@ -112,7 +124,8 @@ function App() {
         });
         
         if (response.ok) {
-          setPhotos(photos.filter(photo => photo.id !== id));
+          // Recharger toutes les photos depuis l'API pour s'assurer de la synchronisation
+          await fetchPhotos();
           showNotification('Photo supprimée avec succès', 'success');
         } else {
           showNotification('Erreur lors de la suppression', 'error');
@@ -140,9 +153,8 @@ function App() {
       });
 
       if (response.ok) {
-        setPhotos(photos.map(photo => 
-          photo.id === id ? { ...photo, isFavorite: !photo.isFavorite } : photo
-        ));
+        // Recharger toutes les photos depuis l'API pour s'assurer de la synchronisation
+        await fetchPhotos();
         showNotification(
           photo.isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris', 
           'success'
