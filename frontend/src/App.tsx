@@ -29,38 +29,35 @@ function App() {
   // Fonction pour charger les photos depuis l'API
   const fetchPhotos = async () => {
     try {
-      console.log('Chargement des photos depuis l\'API...');
-      const response = await fetch('/api/photos');
-      console.log('Réponse fetchPhotos:', response.status, response.statusText);
+      setLoading(true);
+      console.log('🔄 Chargement des photos depuis l\'API...');
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Photos chargées depuis l\'API:', data);
-        console.log('Nombre de photos:', data.length);
-        
-        // Convertir le format de l'API vers le format du frontend
-        const convertedPhotos = data.map((photo: any) => ({
-          id: photo.id,
-          url: photo.src,
-          title: photo.alt,
-          isFavorite: photo.favorite
-        }));
-        
-        console.log('Photos converties:', convertedPhotos);
-        console.log('Nombre de photos dans l\'état:', convertedPhotos.length);
-        setPhotos(convertedPhotos);
-        console.log('Photos mises à jour dans l\'état');
-        
-        // Vérification que les photos sont bien dans l'état
-        setTimeout(() => {
-          console.log('État actuel des photos:', photos);
-        }, 100);
-      } else {
-        const errorText = await response.text();
-        console.error('Erreur lors du chargement des photos:', response.status, errorText);
+      const response = await fetch('/api/photos');
+      console.log('📡 Réponse API photos:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
       }
+      
+      const photosData = await response.json();
+      console.log('📸 Photos reçues:', photosData);
+      console.log('📊 Nombre de photos:', photosData.length);
+      
+      // Vérifier chaque photo
+      photosData.forEach((photo: Photo, index: number) => {
+        console.log(`📷 Photo ${index + 1}:`, {
+          id: photo.id,
+          url: photo.url,
+          title: photo.title,
+          isFavorite: photo.isFavorite
+        });
+      });
+      
+      setPhotos(photosData);
+      console.log('✅ Photos chargées avec succès dans l\'état');
     } catch (error) {
-      console.error('Erreur réseau lors du chargement:', error);
+      console.error('❌ Erreur lors du chargement des photos:', error);
+      showNotification('Erreur lors du chargement des photos', 'error');
     } finally {
       setLoading(false);
     }
@@ -270,9 +267,9 @@ function App() {
         
         // Créer la photo dans la galerie avec l'URL de l'image uploadée
         const newPhoto = {
-          src: uploadResult.imageUrl,
-          alt: `Photo uploadée ${Date.now() + i}`,
-          favorite: false
+          url: uploadResult.imageUrl,
+          title: `Photo uploadée ${Date.now() + i}`,
+          isFavorite: false
         };
 
         console.log('Envoi de la photo à l\'API photos:', newPhoto);

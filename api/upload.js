@@ -24,27 +24,41 @@ const uploadToImageKit = async (imageData, fileName) => {
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
-    // Préparer les données pour l'API ImageKit
-    const formData = new FormData();
-    formData.append('file', imageBuffer, fileName);
-    formData.append('fileName', fileName);
-    formData.append('folder', 'galerie-privee');
+    // Créer la boundary pour multipart/form-data
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(16).substr(2);
+    
+    // Construire le body multipart manuellement
+    let body = '';
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`;
+    body += `Content-Type: image/jpeg\r\n\r\n`;
+    body += imageBuffer.toString('binary');
+    body += `\r\n--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="fileName"\r\n\r\n`;
+    body += fileName;
+    body += `\r\n--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="folder"\r\n\r\n`;
+    body += 'galerie-privee';
+    body += `\r\n--${boundary}--\r\n`;
     
     // Upload via API REST ImageKit
     const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${Buffer.from(IMAGEKIT_PRIVATE_KEY + ':').toString('base64')}`,
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
       },
-      body: formData
+      body: Buffer.from(body, 'binary')
     });
     
     if (!response.ok) {
-      throw new Error(`Erreur upload ImageKit: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Erreur ImageKit API:', response.status, errorText);
+      throw new Error(`Erreur upload ImageKit: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
+    console.log('Réponse ImageKit:', result);
     
     return {
       success: true,
@@ -56,7 +70,7 @@ const uploadToImageKit = async (imageData, fileName) => {
   } catch (error) {
     console.error('Erreur upload ImageKit:', error);
     
-    // Fallback : simuler l'upload pour les tests
+    // Fallback : utiliser l'URL directe ImageKit
     const imageUrl = `${IMAGEKIT_URL_ENDPOINT}/galerie-privee/${fileName}`;
     
     return {
@@ -119,6 +133,7 @@ module.exports = (req, res) => {
         };
 
         console.log('Upload ImageKit réussi:', response.message);
+        console.log('URL de l\'image:', uploadResult.url);
         res.status(200).json(response);
       })
       .catch(error => {

@@ -19,39 +19,39 @@ const loadPhotos = () => {
   return [
     {
       id: 1,
-      src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-      alt: "Notre premier rendez-vous",
-      favorite: false
+      url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+      title: "Notre premier rendez-vous",
+      isFavorite: false
     },
     {
       id: 2,
-      src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      alt: "Nos fiançailles",
-      favorite: true
+      url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+      title: "Nos fiançailles",
+      isFavorite: true
     },
     {
       id: 3,
-      src: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
-      alt: "Préparation du mariage",
-      favorite: false
+      url: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=400&h=300&fit=crop",
+      title: "Préparation du mariage",
+      isFavorite: false
     },
     {
       id: 4,
-      src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      alt: "Le grand jour",
-      favorite: false
+      url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+      title: "Le grand jour",
+      isFavorite: false
     },
     {
       id: 5,
-      src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-      alt: "Notre voyage de noces",
-      favorite: false
+      url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
+      title: "Notre voyage de noces",
+      isFavorite: false
     },
     {
       id: 6,
-      src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-      alt: "Notre première maison",
-      favorite: false
+      url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
+      title: "Notre première maison",
+      isFavorite: false
     }
   ];
 };
@@ -94,9 +94,9 @@ module.exports = (req, res) => {
       try {
         const newPhoto = {
           id: Date.now(), // ID unique basé sur le timestamp
-          src: req.body.src,
-          alt: req.body.alt || "Nouvelle photo",
-          favorite: req.body.favorite || false
+          url: req.body.url,
+          title: req.body.title || "Nouvelle photo",
+          isFavorite: req.body.isFavorite || false
         };
         photos.push(newPhoto);
         savePhotos(photos); // Sauvegarder immédiatement
