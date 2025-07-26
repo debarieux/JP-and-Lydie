@@ -4,6 +4,7 @@
   "outputDirectory": "frontend/build",
   "installCommand": "cd frontend && npm install",
   "framework": "create-react-app",
+  "public": true,
   "rewrites": [
     {
       "source": "/(.*)",
