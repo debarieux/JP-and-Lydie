@@ -26,31 +26,33 @@ function App() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Charger les photos depuis l'API
-  useEffect(() => {
-    const fetchPhotos = async () => {
-      try {
-        const response = await fetch('/api/photos');
-        if (response.ok) {
-          const data = await response.json();
-          // Convertir le format de l'API vers le format du frontend
-          const convertedPhotos = data.map((photo: any) => ({
-            id: photo.id,
-            url: photo.src,
-            title: photo.alt,
-            isFavorite: photo.favorite
-          }));
-          setPhotos(convertedPhotos);
-        } else {
-          console.error('Erreur lors du chargement des photos');
-        }
-      } catch (error) {
-        console.error('Erreur réseau:', error);
-      } finally {
-        setLoading(false);
+  // Fonction pour charger les photos depuis l'API
+  const fetchPhotos = async () => {
+    try {
+      const response = await fetch('/api/photos');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Photos chargées depuis l\'API:', data);
+        // Convertir le format de l'API vers le format du frontend
+        const convertedPhotos = data.map((photo: any) => ({
+          id: photo.id,
+          url: photo.src,
+          title: photo.alt,
+          isFavorite: photo.favorite
+        }));
+        setPhotos(convertedPhotos);
+      } else {
+        console.error('Erreur lors du chargement des photos');
       }
-    };
+    } catch (error) {
+      console.error('Erreur réseau:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Charger les photos depuis l'API au montage
+  useEffect(() => {
     fetchPhotos();
   }, []);
 
@@ -234,20 +236,20 @@ function App() {
           body: JSON.stringify(newPhoto)
         });
 
+        console.log('Réponse API:', response.status, response.statusText);
+        
         if (response.ok) {
           const createdPhoto = await response.json();
-          // Convertir le format de l'API vers le format du frontend
-          const convertedPhoto = {
-            id: createdPhoto.id,
-            url: createdPhoto.src,
-            title: createdPhoto.alt,
-            isFavorite: createdPhoto.favorite
-          };
-          setPhotos(prev => [...prev, convertedPhoto]);
+          console.log('Photo créée:', createdPhoto);
         } else {
-          throw new Error('Erreur lors de l\'ajout de la photo');
+          const errorText = await response.text();
+          console.error('Erreur API:', errorText);
+          throw new Error(`Erreur lors de l'ajout de la photo: ${response.status}`);
         }
       }
+      
+      // Recharger toutes les photos depuis l'API après l'upload
+      await fetchPhotos();
       
       setUploadedFiles([]);
       showNotification('Photos ajoutées avec succès !', 'success');
