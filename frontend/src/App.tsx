@@ -71,14 +71,23 @@ function App() {
     fetchPhotos();
   }, []);
 
-  // Rafraîchir les données toutes les 15 secondes pour la synchronisation
+  // Rafraîchissement intelligent : seulement quand nécessaire
   useEffect(() => {
     const interval = setInterval(() => {
       if (isAuthenticated && currentView === 'gallery') {
-        console.log('🔄 Rafraîchissement automatique des données...');
-        fetchPhotos();
+        // Rafraîchir seulement si on n'a pas fait d'action récemment
+        const lastActionTime = localStorage.getItem('lastActionTime');
+        const now = Date.now();
+        const timeSinceLastAction = lastActionTime ? now - parseInt(lastActionTime) : 60000; // 1 minute par défaut
+        
+        if (timeSinceLastAction > 30000) { // Rafraîchir seulement si plus de 30s depuis la dernière action
+          console.log('🔄 Rafraîchissement automatique intelligent...');
+          fetchPhotos();
+        } else {
+          console.log('⏸️ Rafraîchissement ignoré (action récente)');
+        }
       }
-    }, 15000); // 15 secondes au lieu de 30
+    }, 30000); // Vérifier toutes les 30 secondes
 
     return () => clearInterval(interval);
   }, [isAuthenticated, currentView]);
@@ -139,6 +148,12 @@ function App() {
   const handleZoom = (photo: Photo) => setZoomPhoto(photo);
   const handleCloseZoom = () => setZoomPhoto(null);
 
+  // Fonction pour marquer une action récente
+  const markAction = () => {
+    localStorage.setItem('lastActionTime', Date.now().toString());
+    console.log('📝 Action marquée - rafraîchissement différé');
+  };
+
   const handleDelete = async (id: number) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
       try {
@@ -149,15 +164,16 @@ function App() {
         
         if (response.ok) {
           console.log('✅ Photo supprimée avec succès');
+          markAction(); // Marquer l'action
           // Rafraîchissement immédiat
           await fetchPhotos();
           showNotification('Photo supprimée avec succès', 'success');
           
-          // Rafraîchissement supplémentaire après 1 seconde
+          // Rafraîchissement supplémentaire après 2 secondes
           setTimeout(async () => {
             console.log('🔄 Vérification post-suppression...');
             await fetchPhotos();
-          }, 1000);
+          }, 2000);
         } else {
           console.error('❌ Erreur lors de la suppression:', response.status);
           showNotification('Erreur lors de la suppression', 'error');
@@ -197,6 +213,7 @@ function App() {
         const updatedPhoto = await response.json();
         console.log('✅ Photo mise à jour:', updatedPhoto);
         
+        markAction(); // Marquer l'action
         // Rafraîchissement immédiat
         await fetchPhotos();
         showNotification(
@@ -204,11 +221,11 @@ function App() {
           'success'
         );
         
-        // Rafraîchissement supplémentaire après 1 seconde
+        // Rafraîchissement supplémentaire après 2 secondes
         setTimeout(async () => {
           console.log('🔄 Vérification post-favori...');
           await fetchPhotos();
-        }, 1000);
+        }, 2000);
       } else {
         const errorText = await response.text();
         console.error('❌ Erreur lors de la mise à jour:', response.status, errorText);
@@ -309,7 +326,7 @@ function App() {
         const newPhoto = {
           url: uploadResult.imageUrl,
           title: `Photo uploadée ${Date.now() + i}`,
-          isFavorite: false
+        isFavorite: false
         };
 
         console.log('Envoi de la photo à l\'API photos:', newPhoto);
@@ -339,21 +356,23 @@ function App() {
       await fetchPhotos();
       console.log('✅ Galerie rechargée avec succès');
       
+      markAction(); // Marquer l'action d'upload
+      
       // Vérifications supplémentaires pour s'assurer de la synchronisation
       setTimeout(async () => {
-        console.log('🔄 Vérification post-upload (1s)...');
+        console.log('🔄 Vérification post-upload (2s)...');
         await fetchPhotos();
-      }, 1000);
-      
-      setTimeout(async () => {
-        console.log('🔄 Vérification post-upload (3s)...');
-        await fetchPhotos();
-      }, 3000);
+      }, 2000);
       
       setTimeout(async () => {
         console.log('🔄 Vérification post-upload (5s)...');
         await fetchPhotos();
       }, 5000);
+      
+      setTimeout(async () => {
+        console.log('🔄 Vérification post-upload (10s)...');
+        await fetchPhotos();
+      }, 10000);
       
       setUploadedFiles([]);
       showNotification('Photos ajoutées avec succès !', 'success');
@@ -636,9 +655,9 @@ function App() {
                 <span>Actualisation...</span>
               </div>
             )}
-            <button onClick={handleLogout} className="logout-button">
-              Se déconnecter
-            </button>
+          <button onClick={handleLogout} className="logout-button">
+            Se déconnecter
+          </button>
           </div>
         </header>
 
@@ -653,7 +672,7 @@ function App() {
               <p>Chargement de la galerie...</p>
             </div>
           ) : (
-            <div className="gallery-grid">
+          <div className="gallery-grid">
               {(() => {
                 console.log('Affichage de', photos.length, 'photos:', photos);
                 return null;
@@ -664,16 +683,16 @@ function App() {
                 </div>
               ) : (
                 photos.map(photo => (
-                  <PhotoCard
-                    key={photo.id}
-                    photo={photo}
-                    onZoom={handleZoom}
-                    onDelete={handleDelete}
-                    onToggleFavorite={handleToggleFavorite}
-                  />
+              <PhotoCard
+                key={photo.id}
+                photo={photo}
+                onZoom={handleZoom}
+                onDelete={handleDelete}
+                onToggleFavorite={handleToggleFavorite}
+              />
                 ))
               )}
-            </div>
+          </div>
           )}
         </main>
 
