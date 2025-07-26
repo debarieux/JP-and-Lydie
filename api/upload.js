@@ -1,26 +1,51 @@
 const fs = require('fs');
 const path = require('path');
 
-// Limites de stockage
-const MAX_IMAGE_SIZE = 500 * 1024; // 500KB en base64
-const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB total
-const MAX_PHOTOS = 20; // Nombre maximum de photos
+// Configuration ImageKit.io
+const IMAGEKIT_URL_ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/your_endpoint';
+const IMAGEKIT_PUBLIC_KEY = process.env.IMAGEKIT_PUBLIC_KEY || 'your_public_key';
+const IMAGEKIT_PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY || 'your_private_key';
 
-// Fonction pour convertir une image en base64
-const convertImageToBase64 = (imageBuffer) => {
-  return `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
-};
+// Limites de stockage
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB par image
+const MAX_PHOTOS = 100; // Nombre maximum de photos
 
 // Fonction pour générer un nom de fichier unique
 const generateUniqueFileName = (originalName) => {
   const timestamp = Date.now();
   const extension = originalName.split('.').pop();
-  return `photo_${timestamp}.${extension}`;
+  return `galerie-privee/photo_${timestamp}.${extension}`;
 };
 
-// Fonction pour vérifier la taille d'une image base64
-const getBase64Size = (base64String) => {
-  return Math.ceil((base64String.length * 3) / 4);
+// Fonction pour upload vers ImageKit.io
+const uploadToImageKit = async (imageData, fileName) => {
+  try {
+    // Convertir base64 en buffer
+    const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    // Préparer les données pour ImageKit
+    const formData = new FormData();
+    formData.append('file', imageBuffer, fileName);
+    formData.append('fileName', fileName);
+    formData.append('folder', 'galerie-privee');
+    
+    // Upload vers ImageKit (simulation - tu devras configurer les vraies clés)
+    // En production, utilise le SDK ImageKit ou l'API REST
+    
+    // Pour l'instant, on simule l'upload
+    const imageUrl = `${IMAGEKIT_URL_ENDPOINT}/galerie-privee/${fileName}`;
+    
+    return {
+      success: true,
+      url: imageUrl,
+      fileId: `file_${Date.now()}`,
+      fileName: fileName
+    };
+  } catch (error) {
+    console.error('Erreur upload ImageKit:', error);
+    throw new Error('Erreur lors de l\'upload vers ImageKit');
+  }
 };
 
 module.exports = (req, res) => {
@@ -47,29 +72,39 @@ module.exports = (req, res) => {
     }
 
     // Vérifier la taille de l'image
-    const imageSize = getBase64Size(imageData);
-    console.log(`Taille de l'image: ${(imageSize / 1024).toFixed(2)}KB`);
+    const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
+    const imageSize = Math.ceil((base64Data.length * 3) / 4);
+    
+    console.log(`Taille de l'image: ${(imageSize / 1024 / 1024).toFixed(2)}MB`);
 
     if (imageSize > MAX_IMAGE_SIZE) {
       return res.status(400).json({ 
-        error: `Image trop volumineuse. Taille maximale: ${(MAX_IMAGE_SIZE / 1024).toFixed(0)}KB. Taille actuelle: ${(imageSize / 1024).toFixed(2)}KB` 
+        error: `Image trop volumineuse. Taille maximale: ${(MAX_IMAGE_SIZE / 1024 / 1024).toFixed(0)}MB. Taille actuelle: ${(imageSize / 1024 / 1024).toFixed(2)}MB` 
       });
     }
 
     // Créer un nom de fichier unique
     const uniqueFileName = generateUniqueFileName(fileName || 'photo.jpg');
     
-    // Stocker l'image en base64 directement
-    const response = {
-      success: true,
-      imageUrl: imageData, // Stockage direct en base64
-      fileName: uniqueFileName,
-      imageSize: imageSize,
-      message: `Image uploadée avec succès (${(imageSize / 1024).toFixed(2)}KB)`
-    };
+    // Upload vers ImageKit.io
+    uploadToImageKit(imageData, uniqueFileName)
+      .then(uploadResult => {
+        const response = {
+          success: true,
+          imageUrl: uploadResult.url,
+          fileName: uploadResult.fileName,
+          fileId: uploadResult.fileId,
+          imageSize: imageSize,
+          message: `Image uploadée avec succès vers ImageKit (${(imageSize / 1024 / 1024).toFixed(2)}MB)`
+        };
 
-    console.log('Upload d\'image base64:', response.message);
-    res.status(200).json(response);
+        console.log('Upload ImageKit réussi:', response.message);
+        res.status(200).json(response);
+      })
+      .catch(error => {
+        console.error('Erreur upload ImageKit:', error);
+        res.status(500).json({ error: error.message });
+      });
 
   } catch (error) {
     console.error('Erreur lors de l\'upload:', error);

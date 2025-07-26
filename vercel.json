@@ -13,6 +13,9 @@
   ],
   "env": {
     "REACT_APP_TITLE": "Galerie Privée - Jean-Philippe & Lydie",
-    "REACT_APP_DEFAULT_PASSWORD": "Jean-Philippe & Lydie"
+    "REACT_APP_DEFAULT_PASSWORD": "Jean-Philippe & Lydie",
+    "IMAGEKIT_URL_ENDPOINT": "https://ik.imagekit.io/your_endpoint",
+    "IMAGEKIT_PUBLIC_KEY": "your_public_key",
+    "IMAGEKIT_PRIVATE_KEY": "your_private_key"
   }
 } 
