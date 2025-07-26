@@ -293,16 +293,16 @@ function App() {
     try {
       console.log('🚀 Début de l\'upload de', uploadedFiles.length, 'photos');
       
-      // Traiter les images une par une pour éviter les problèmes sur mobile
+      // Traiter les images une par une
       for (let i = 0; i < uploadedFiles.length; i++) {
         const file = uploadedFiles[i];
         console.log(`📤 Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
         
         try {
-          // Compresser l'image
-          console.log(`🔄 Compression de ${file.name}...`);
-          const compressedImageData = await compressImage(file);
-          console.log(`📦 Image compressée: ${file.name} -> ${(compressedImageData.length / 1024).toFixed(2)}KB`);
+          // Convertir le fichier en base64 sans compression
+          console.log(`🔄 Conversion de ${file.name} en base64...`);
+          const base64Data = await fileToBase64(file);
+          console.log(`📦 Fichier converti: ${file.name} -> ${(base64Data.length / 1024).toFixed(2)}KB`);
           
           // Upload de l'image via l'API d'upload
           console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
@@ -312,7 +312,7 @@ function App() {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              imageData: compressedImageData,
+              imageData: base64Data,
               fileName: file.name
             })
           });
@@ -386,57 +386,23 @@ function App() {
     }
   };
 
-  // Fonction pour compresser une image
-  const compressImage = (file: File): Promise<string> => {
+  // Fonction simple pour convertir un fichier en base64
+  const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
+      const reader = new FileReader();
       
-      // Gestion d'erreur pour mobile
-      img.onerror = (error) => {
-        console.error('❌ Erreur lors du chargement de l\'image:', error);
-        reject(new Error('Impossible de charger l\'image'));
+      reader.onload = () => {
+        const result = reader.result as string;
+        console.log(`📄 Fichier lu: ${file.name} -> ${(result.length / 1024).toFixed(2)}KB`);
+        resolve(result);
       };
       
-      img.onload = () => {
-        try {
-          // Taille fixe pour mobile (plus simple)
-          const maxSize = 500;
-          let { width, height } = img;
-          
-          if (width > height) {
-            if (width > maxSize) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            }
-          } else {
-            if (height > maxSize) {
-              width = (width * maxSize) / height;
-              height = maxSize;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          // Dessiner l'image compressée
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Qualité fixe pour mobile
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          
-          console.log(`📱 Compression: ${file.name} -> ${width}x${height}px`);
-          resolve(compressedDataUrl);
-        } catch (error) {
-          console.error('❌ Erreur lors de la compression:', error);
-          reject(error);
-        }
+      reader.onerror = () => {
+        console.error('❌ Erreur lors de la lecture du fichier:', file.name);
+        reject(new Error('Impossible de lire le fichier'));
       };
       
-      // Créer l'URL de l'objet
-      const objectUrl = URL.createObjectURL(file);
-      img.src = objectUrl;
+      reader.readAsDataURL(file);
     });
   };
 

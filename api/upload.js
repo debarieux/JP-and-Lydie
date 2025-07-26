@@ -24,6 +24,8 @@ const uploadToImageKit = async (imageData, fileName) => {
     const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
     const imageBuffer = Buffer.from(base64Data, 'base64');
     
+    console.log(`📦 Taille du buffer: ${(imageBuffer.length / 1024 / 1024).toFixed(2)}MB`);
+    
     // Créer la boundary pour multipart/form-data
     const boundary = '----WebKitFormBoundary' + Math.random().toString(16).substr(2);
     
@@ -41,29 +43,28 @@ const uploadToImageKit = async (imageData, fileName) => {
     body += 'galerie-privee';
     body += `\r\n--${boundary}--\r\n`;
     
-    // Upload via API REST ImageKit avec timeout réduit
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes max
+    console.log('🚀 Envoi vers ImageKit...');
     
+    // Upload via API REST ImageKit avec timeout plus long
     const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${Buffer.from(IMAGEKIT_PRIVATE_KEY + ':').toString('base64')}`,
         'Content-Type': `multipart/form-data; boundary=${boundary}`
       },
-      body: Buffer.from(body, 'binary'),
-      signal: controller.signal
+      body: Buffer.from(body, 'binary')
     });
     
-    clearTimeout(timeoutId);
+    console.log(`📡 Réponse ImageKit: ${response.status} ${response.statusText}`);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erreur ImageKit API:', response.status, errorText);
+      console.error('❌ Erreur ImageKit API:', response.status, errorText);
       throw new Error(`Erreur upload ImageKit: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
+    console.log('✅ Upload ImageKit réussi:', result);
     
     return {
       success: true,
@@ -73,10 +74,11 @@ const uploadToImageKit = async (imageData, fileName) => {
     };
     
   } catch (error) {
-    console.error('Erreur upload ImageKit:', error);
+    console.error('❌ Erreur upload ImageKit:', error);
     
     // Fallback : utiliser l'URL directe ImageKit
     const imageUrl = `${IMAGEKIT_URL_ENDPOINT}/galerie-privee/${fileName}`;
+    console.log('🔄 Utilisation du fallback URL:', imageUrl);
     
     return {
       success: true,
