@@ -278,7 +278,17 @@ function App() {
       showNotification('Seules les images sont acceptées', 'error');
     }
     
-    setUploadedFiles(prev => [...prev, ...imageFiles]);
+    // Vérifier la taille des fichiers pour mobile
+    const maxFileSize = 5 * 1024 * 1024; // 5MB max
+    const validFiles = imageFiles.filter(file => {
+      if (file.size > maxFileSize) {
+        showNotification(`Fichier trop volumineux: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB). Taille max: 5MB`, 'error');
+        return false;
+      }
+      return true;
+    });
+    
+    setUploadedFiles(prev => [...prev, ...validFiles]);
   };
 
   const handleUploadSubmit = async () => {
@@ -299,10 +309,18 @@ function App() {
         console.log(`📤 Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
         
         try {
-          // Convertir le fichier en base64 sans compression
-          console.log(`🔄 Conversion de ${file.name} en base64...`);
-          const base64Data = await fileToBase64(file);
-          console.log(`📦 Fichier converti: ${file.name} -> ${(base64Data.length / 1024).toFixed(2)}KB`);
+          let imageData;
+          
+          // Si le fichier est trop gros (> 2MB), le compresser
+          if (file.size > 2 * 1024 * 1024) {
+            console.log(`🔄 Compression de ${file.name} (trop volumineux: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+            imageData = await compressImageForMobile(file);
+          } else {
+            console.log(`🔄 Conversion directe de ${file.name} en base64...`);
+            imageData = await fileToBase64(file);
+          }
+          
+          console.log(`📦 Fichier préparé: ${file.name} -> ${(imageData.length / 1024).toFixed(2)}KB`);
           
           // Upload de l'image via l'API d'upload
           console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
@@ -312,7 +330,7 @@ function App() {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              imageData: base64Data,
+              imageData: imageData,
               fileName: file.name
             })
           });
@@ -403,6 +421,58 @@ function App() {
       };
       
       reader.readAsDataURL(file);
+    });
+  };
+
+  // Fonction de compression simple pour mobile
+  const compressImageForMobile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onerror = () => {
+        console.error('❌ Erreur lors du chargement de l\'image pour compression');
+        reject(new Error('Impossible de charger l\'image pour compression'));
+      };
+      
+      img.onload = () => {
+        try {
+          // Taille réduite pour mobile
+          const maxSize = 800;
+          let { width, height } = img;
+          
+          if (width > height) {
+            if (width > maxSize) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Dessiner l'image compressée
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Qualité réduite
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+          
+          console.log(`📱 Compression mobile: ${file.name} -> ${width}x${height}px`);
+          resolve(compressedDataUrl);
+        } catch (error) {
+          console.error('❌ Erreur lors de la compression:', error);
+          reject(error);
+        }
+      };
+      
+      const objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
     });
   };
 
