@@ -278,17 +278,8 @@ function App() {
       showNotification('Seules les images sont acceptées', 'error');
     }
     
-    // Vérifier la taille des fichiers pour mobile
-    const maxFileSize = 5 * 1024 * 1024; // 5MB max
-    const validFiles = imageFiles.filter(file => {
-      if (file.size > maxFileSize) {
-        showNotification(`Fichier trop volumineux: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB). Taille max: 5MB`, 'error');
-        return false;
-      }
-      return true;
-    });
-    
-    setUploadedFiles(prev => [...prev, ...validFiles]);
+    // Accepter tous les fichiers d'image, peu importe la taille
+    setUploadedFiles(prev => [...prev, ...imageFiles]);
   };
 
   const handleUploadSubmit = async () => {
@@ -306,17 +297,27 @@ function App() {
       // Traiter les images une par une
       for (let i = 0; i < uploadedFiles.length; i++) {
         const file = uploadedFiles[i];
-        console.log(`📤 Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name);
+        console.log(`📤 Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(1)}MB)`);
         
         try {
           let imageData;
           
-          // Si le fichier est trop gros (> 2MB), le compresser
-          if (file.size > 2 * 1024 * 1024) {
-            console.log(`🔄 Compression de ${file.name} (trop volumineux: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
-            imageData = await compressImageForMobile(file);
+          // Compression intelligente basée sur la taille
+          if (file.size > 5 * 1024 * 1024) {
+            // Très gros fichier (> 5MB) - compression forte
+            console.log(`🔄 Compression forte de ${file.name} (très volumineux)`);
+            imageData = await compressImageIntelligently(file, 600, 0.5);
+          } else if (file.size > 2 * 1024 * 1024) {
+            // Gros fichier (2-5MB) - compression moyenne
+            console.log(`🔄 Compression moyenne de ${file.name} (volumineux)`);
+            imageData = await compressImageIntelligently(file, 800, 0.6);
+          } else if (file.size > 1 * 1024 * 1024) {
+            // Fichier moyen (1-2MB) - compression légère
+            console.log(`🔄 Compression légère de ${file.name} (taille moyenne)`);
+            imageData = await compressImageIntelligently(file, 1000, 0.7);
           } else {
-            console.log(`🔄 Conversion directe de ${file.name} en base64...`);
+            // Petit fichier (< 1MB) - pas de compression
+            console.log(`🔄 Conversion directe de ${file.name} (petit fichier)`);
             imageData = await fileToBase64(file);
           }
           
@@ -424,8 +425,8 @@ function App() {
     });
   };
 
-  // Fonction de compression simple pour mobile
-  const compressImageForMobile = (file: File): Promise<string> => {
+  // Fonction de compression intelligente qui s'adapte à la taille
+  const compressImageIntelligently = (file: File, maxSize: number, quality: number): Promise<string> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -438,10 +439,9 @@ function App() {
       
       img.onload = () => {
         try {
-          // Taille réduite pour mobile
-          const maxSize = 800;
           let { width, height } = img;
           
+          // Redimensionner si nécessaire
           if (width > height) {
             if (width > maxSize) {
               height = (height * maxSize) / width;
@@ -460,10 +460,10 @@ function App() {
           // Dessiner l'image compressée
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // Qualité réduite
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+          // Convertir avec la qualité spécifiée
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
           
-          console.log(`📱 Compression mobile: ${file.name} -> ${width}x${height}px`);
+          console.log(`📱 Compression intelligente: ${file.name} -> ${width}x${height}px, qualité: ${quality}`);
           resolve(compressedDataUrl);
         } catch (error) {
           console.error('❌ Erreur lors de la compression:', error);
