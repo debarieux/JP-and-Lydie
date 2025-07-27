@@ -290,6 +290,7 @@ function App() {
 
     setIsUploading(true);
     console.log('🔄 Début du processus d\'upload...');
+    console.log(`📱 Appareil: ${navigator.userAgent}`);
     
     try {
       console.log('🚀 Début de l\'upload de', uploadedFiles.length, 'photos');
@@ -302,19 +303,38 @@ function App() {
         try {
           let imageData;
           
+          // Détection Samsung
+          const isSamsung = navigator.userAgent.includes('Samsung') || navigator.userAgent.includes('SM-');
+          console.log(`📱 Samsung détecté: ${isSamsung}`);
+          
           // Compression intelligente basée sur la taille
           if (file.size > 5 * 1024 * 1024) {
             // Très gros fichier (> 5MB) - compression forte
             console.log(`🔄 Compression forte de ${file.name} (très volumineux)`);
-            imageData = await compressImageIntelligently(file, 600, 0.5);
+            try {
+              imageData = await compressImageIntelligently(file, 600, 0.5);
+            } catch (error) {
+              console.log('🔄 Fallback Samsung pour gros fichier');
+              imageData = await fileToBase64(file);
+            }
           } else if (file.size > 2 * 1024 * 1024) {
             // Gros fichier (2-5MB) - compression moyenne
             console.log(`🔄 Compression moyenne de ${file.name} (volumineux)`);
-            imageData = await compressImageIntelligently(file, 800, 0.6);
+            try {
+              imageData = await compressImageIntelligently(file, 800, 0.6);
+            } catch (error) {
+              console.log('🔄 Fallback Samsung pour fichier moyen');
+              imageData = await fileToBase64(file);
+            }
           } else if (file.size > 1 * 1024 * 1024) {
             // Fichier moyen (1-2MB) - compression légère
             console.log(`🔄 Compression légère de ${file.name} (taille moyenne)`);
-            imageData = await compressImageIntelligently(file, 1000, 0.7);
+            try {
+              imageData = await compressImageIntelligently(file, 1000, 0.7);
+            } catch (error) {
+              console.log('🔄 Fallback Samsung pour fichier moyen');
+              imageData = await fileToBase64(file);
+            }
           } else {
             // Petit fichier (< 1MB) - pas de compression
             console.log(`🔄 Conversion directe de ${file.name} (petit fichier)`);
@@ -428,17 +448,38 @@ function App() {
   // Fonction de compression intelligente qui s'adapte à la taille
   const compressImageIntelligently = (file: File, maxSize: number, quality: number): Promise<string> => {
     return new Promise((resolve, reject) => {
+      console.log(`🔍 Début compression intelligente pour ${file.name}`);
+      console.log(`📱 Appareil détecté: ${navigator.userAgent}`);
+      console.log(`📏 Taille fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`🎯 Paramètres: maxSize=${maxSize}px, quality=${quality}`);
+      
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
-      img.onerror = () => {
-        console.error('❌ Erreur lors du chargement de l\'image pour compression');
+      // Timeout pour éviter les blocages
+      const timeout = setTimeout(() => {
+        console.error('⏰ Timeout lors de la compression');
+        reject(new Error('Timeout lors de la compression de l\'image'));
+      }, 30000); // 30 secondes
+      
+      img.onerror = (error) => {
+        clearTimeout(timeout);
+        console.error('❌ Erreur lors du chargement de l\'image pour compression:', error);
+        console.error('📱 Détails Samsung:', {
+          fileType: file.type,
+          fileSize: file.size,
+          fileName: file.name,
+          userAgent: navigator.userAgent
+        });
         reject(new Error('Impossible de charger l\'image pour compression'));
       };
       
       img.onload = () => {
         try {
+          clearTimeout(timeout);
+          console.log(`🖼️ Image chargée: ${img.width}x${img.height}px`);
+          
           let { width, height } = img;
           
           // Redimensionner si nécessaire
@@ -454,6 +495,8 @@ function App() {
             }
           }
           
+          console.log(`📐 Dimensions finales: ${width}x${height}px`);
+          
           canvas.width = width;
           canvas.height = height;
           
@@ -463,16 +506,26 @@ function App() {
           // Convertir avec la qualité spécifiée
           const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
           
-          console.log(`📱 Compression intelligente: ${file.name} -> ${width}x${height}px, qualité: ${quality}`);
+          console.log(`✅ Compression réussie: ${file.name} -> ${width}x${height}px, qualité: ${quality}`);
+          console.log(`📦 Taille compressée: ${(compressedDataUrl.length / 1024).toFixed(2)}KB`);
+          
           resolve(compressedDataUrl);
         } catch (error) {
+          clearTimeout(timeout);
           console.error('❌ Erreur lors de la compression:', error);
           reject(error);
         }
       };
       
       const objectUrl = URL.createObjectURL(file);
+      console.log(`🔗 URL créée: ${objectUrl}`);
       img.src = objectUrl;
+      
+      // Nettoyer l'URL après utilisation
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        img.onload = null; // Éviter les appels multiples
+      };
     });
   };
 
