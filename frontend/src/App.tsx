@@ -33,7 +33,15 @@ function App() {
       setLoading(true);
       setIsRefreshing(true);
       console.log('🔄 Chargement des photos depuis l\'API...');
-      const response = await fetch('/api/photos');
+      
+      // Timeout pour éviter les blocages
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout lors du chargement des photos')), 10000);
+      });
+      
+      const fetchPromise = fetch('/api/photos');
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      
       console.log('📡 Réponse API photos:', response.status);
       
       if (response.ok) {
@@ -68,37 +76,31 @@ function App() {
 
   // Charger les photos depuis l'API au montage
   useEffect(() => {
-    fetchPhotos();
-  }, []);
+    if (isAuthenticated && currentView === 'gallery') {
+      fetchPhotos();
+    }
+  }, [isAuthenticated, currentView]);
 
   // Rafraîchissement intelligent : seulement quand nécessaire
   useEffect(() => {
+    if (!isAuthenticated || currentView !== 'gallery') return;
+    
     const interval = setInterval(() => {
-      if (isAuthenticated && currentView === 'gallery') {
-        // Rafraîchir seulement si on n'a pas fait d'action récemment
-        const lastActionTime = localStorage.getItem('lastActionTime');
-        const now = Date.now();
-        const timeSinceLastAction = lastActionTime ? now - parseInt(lastActionTime) : 60000; // 1 minute par défaut
-        
-        if (timeSinceLastAction > 30000) { // Rafraîchir seulement si plus de 30s depuis la dernière action
-          console.log('🔄 Rafraîchissement automatique intelligent...');
-          fetchPhotos();
-        } else {
-          console.log('⏸️ Rafraîchissement ignoré (action récente)');
-        }
+      // Rafraîchir seulement si on n'a pas fait d'action récemment
+      const lastActionTime = localStorage.getItem('lastActionTime');
+      const now = Date.now();
+      const timeSinceLastAction = lastActionTime ? now - parseInt(lastActionTime) : 60000; // 1 minute par défaut
+      
+      if (timeSinceLastAction > 30000) { // Rafraîchir seulement si plus de 30s depuis la dernière action
+        console.log('🔄 Rafraîchissement automatique intelligent...');
+        fetchPhotos();
+      } else {
+        console.log('⏸️ Rafraîchissement ignoré (action récente)');
       }
     }, 30000); // Vérifier toutes les 30 secondes
 
     return () => clearInterval(interval);
   }, [isAuthenticated, currentView]);
-
-  // Rafraîchissement immédiat après changement de vue
-  useEffect(() => {
-    if (isAuthenticated && currentView === 'gallery') {
-      console.log('🔄 Rafraîchissement après changement de vue...');
-      fetchPhotos();
-    }
-  }, [currentView, isAuthenticated]);
 
   // Redirection basée sur l'authentification
   useEffect(() => {
