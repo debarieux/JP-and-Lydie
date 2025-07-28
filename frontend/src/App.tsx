@@ -287,6 +287,13 @@ function App() {
     console.log('🔄 Début du processus d\'upload...');
     console.log(`📱 Appareil: ${navigator.userAgent}`);
     
+    // Timeout global pour éviter les blocages
+    const globalTimeout = setTimeout(() => {
+      console.error('⏰ TIMEOUT GLOBAL - Upload bloqué depuis plus de 60 secondes');
+      setIsUploading(false);
+      showNotification('Upload bloqué - Veuillez réessayer', 'error');
+    }, 60000); // 60 secondes
+    
     try {
       console.log('🚀 Début de l\'upload de', uploadedFiles.length, 'photos');
       
@@ -302,94 +309,111 @@ function App() {
           const isSamsung = navigator.userAgent.includes('Samsung') || navigator.userAgent.includes('SM-');
           console.log(`📱 Samsung détecté: ${isSamsung}`);
           
-          // Compression intelligente basée sur la taille
-          if (file.size > 5 * 1024 * 1024) {
-            // Très gros fichier (> 5MB) - compression forte
-            console.log(`🔄 Compression forte de ${file.name} (très volumineux)`);
-            try {
-              imageData = await compressImageIntelligently(file, 600, 0.5);
-            } catch (error) {
-              console.log('🔄 Fallback Samsung pour gros fichier');
-              imageData = await fileToBase64(file);
-            }
-          } else if (file.size > 2 * 1024 * 1024) {
-            // Gros fichier (2-5MB) - compression moyenne
-            console.log(`🔄 Compression moyenne de ${file.name} (volumineux)`);
-            try {
-              imageData = await compressImageIntelligently(file, 800, 0.6);
-            } catch (error) {
-              console.log('🔄 Fallback Samsung pour fichier moyen');
-              imageData = await fileToBase64(file);
-            }
-          } else if (file.size > 1 * 1024 * 1024) {
-            // Fichier moyen (1-2MB) - compression légère
-            console.log(`🔄 Compression légère de ${file.name} (taille moyenne)`);
-            try {
-              imageData = await compressImageIntelligently(file, 1000, 0.7);
-            } catch (error) {
-              console.log('🔄 Fallback Samsung pour fichier moyen');
-              imageData = await fileToBase64(file);
-            }
-          } else {
-            // Petit fichier (< 1MB) - pas de compression
-            console.log(`🔄 Conversion directe de ${file.name} (petit fichier)`);
+          // Pour Samsung, utiliser directement fileToBase64 sans compression
+          if (isSamsung) {
+            console.log('📱 Mode Samsung - conversion directe sans compression');
             imageData = await fileToBase64(file);
+          } else {
+            // Timeout pour la compression
+            const compressionTimeout = setTimeout(() => {
+              console.error('⏰ TIMEOUT COMPRESSION - Utilisation du fallback');
+              throw new Error('Timeout lors de la compression');
+            }, 30000); // 30 secondes
+            
+            try {
+              // Compression intelligente basée sur la taille
+              if (file.size > 5 * 1024 * 1024) {
+                // Très gros fichier (> 5MB) - compression forte
+                console.log(`🔄 Compression forte de ${file.name} (très volumineux)`);
+                imageData = await compressImageIntelligently(file, 600, 0.5);
+              } else if (file.size > 2 * 1024 * 1024) {
+                // Gros fichier (2-5MB) - compression moyenne
+                console.log(`🔄 Compression moyenne de ${file.name} (volumineux)`);
+                imageData = await compressImageIntelligently(file, 800, 0.6);
+              } else if (file.size > 1 * 1024 * 1024) {
+                // Fichier moyen (1-2MB) - compression légère
+                console.log(`🔄 Compression légère de ${file.name} (taille moyenne)`);
+                imageData = await compressImageIntelligently(file, 1000, 0.7);
+              } else {
+                // Petit fichier (< 1MB) - pas de compression
+                console.log(`🔄 Conversion directe de ${file.name} (petit fichier)`);
+                imageData = await fileToBase64(file);
+              }
+              clearTimeout(compressionTimeout);
+            } catch (error) {
+              clearTimeout(compressionTimeout);
+              console.log('🔄 Fallback - conversion directe');
+              imageData = await fileToBase64(file);
+            }
           }
           
           console.log(`📦 Fichier préparé: ${file.name} -> ${(imageData.length / 1024).toFixed(2)}KB`);
           
-          // Upload de l'image via l'API d'upload
-          console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              imageData: imageData,
-              fileName: file.name
-            })
-          });
+          // Timeout pour l'upload API
+          const uploadTimeout = setTimeout(() => {
+            console.error('⏰ TIMEOUT UPLOAD API - Upload bloqué');
+            throw new Error('Timeout lors de l\'upload vers l\'API');
+          }, 30000); // 30 secondes
           
-          console.log(`📡 Réponse API upload pour ${file.name}:`, uploadResponse.status, uploadResponse.statusText);
-          
-          if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text();
-            console.error(`❌ Erreur API upload pour ${file.name}:`, errorText);
-            throw new Error(`Erreur lors de l'upload de l'image: ${uploadResponse.status} - ${errorText}`);
-          }
-          
-          const uploadResult = await uploadResponse.json();
-          console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
-          console.log(`🔗 URL reçue: ${uploadResult.imageUrl}`);
-          
-          // Créer la photo dans la galerie avec l'URL de l'image uploadée
-          const newPhoto = {
-            url: uploadResult.imageUrl,
-            title: `Photo uploadée ${Date.now() + i}`,
-            isFavorite: false
-          };
+          try {
+            // Upload de l'image via l'API d'upload
+            console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
+            const uploadResponse = await fetch('/api/upload', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                imageData: imageData,
+                fileName: file.name
+              })
+            });
+            
+            clearTimeout(uploadTimeout);
+            console.log(`📡 Réponse API upload pour ${file.name}:`, uploadResponse.status, uploadResponse.statusText);
+            
+            if (!uploadResponse.ok) {
+              const errorText = await uploadResponse.text();
+              console.error(`❌ Erreur API upload pour ${file.name}:`, errorText);
+              throw new Error(`Erreur lors de l'upload de l'image: ${uploadResponse.status} - ${errorText}`);
+            }
+            
+            const uploadResult = await uploadResponse.json();
+            console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
+            console.log(`🔗 URL reçue: ${uploadResult.imageUrl}`);
+            
+            // Créer la photo dans la galerie avec l'URL de l'image uploadée
+            const newPhoto = {
+              url: uploadResult.imageUrl,
+              title: `Photo uploadée ${Date.now() + i}`,
+              isFavorite: false
+            };
 
-          console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
-          console.log(`🖼️ URL qui sera affichée: ${newPhoto.url}`);
+            console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
+            console.log(`🖼️ URL qui sera affichée: ${newPhoto.url}`);
 
-          const response = await fetch('/api/photos', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(newPhoto)
-          });
+            const response = await fetch('/api/photos', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(newPhoto)
+            });
 
-          console.log(`📡 Réponse API photos pour ${file.name}:`, response.status, response.statusText);
-          
-          if (response.ok) {
-            const createdPhoto = await response.json();
-            console.log(`✅ Photo créée avec succès:`, createdPhoto);
-          } else {
-            const errorText = await response.text();
-            console.error(`❌ Erreur API photos pour ${file.name}:`, errorText);
-            throw new Error(`Erreur lors de l'ajout de la photo: ${response.status} - ${errorText}`);
+            console.log(`📡 Réponse API photos pour ${file.name}:`, response.status, response.statusText);
+            
+            if (response.ok) {
+              const createdPhoto = await response.json();
+              console.log(`✅ Photo créée avec succès:`, createdPhoto);
+            } else {
+              const errorText = await response.text();
+              console.error(`❌ Erreur API photos pour ${file.name}:`, errorText);
+              throw new Error(`Erreur lors de l'ajout de la photo: ${response.status} - ${errorText}`);
+            }
+            
+          } catch (error) {
+            clearTimeout(uploadTimeout);
+            throw error;
           }
           
         } catch (error) {
@@ -398,6 +422,7 @@ function App() {
         }
       }
       
+      clearTimeout(globalTimeout);
       console.log(`🎉 Toutes les ${uploadedFiles.length} photos uploadées avec succès !`);
       
       // Recharger la galerie après tous les uploads
@@ -413,6 +438,7 @@ function App() {
       showNotification(`${uploadedFiles.length} photo(s) uploadée(s) avec succès !`, 'success');
       
     } catch (error) {
+      clearTimeout(globalTimeout);
       console.error('❌ Erreur lors de l\'upload:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       showNotification(`Erreur lors de l'upload des photos: ${errorMessage}`, 'error');
