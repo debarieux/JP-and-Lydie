@@ -799,6 +799,12 @@ function App() {
         <header className="gallery-header">
           <h1 className="gallery-title">Notre Galerie Privée</h1>
           <div className="gallery-header-actions">
+            <button 
+              onClick={() => setCurrentView('upload')} 
+              className="add-photos-header-button"
+            >
+              Ajouter des photos
+            </button>
             {isRefreshing && (
               <div className="refresh-indicator">
                 <div className="refresh-spinner"></div>
@@ -830,6 +836,12 @@ function App() {
               {photos.length === 0 ? (
                 <div className="empty-gallery">
                   <p>Aucune photo dans la galerie</p>
+                  <button 
+                    onClick={() => setCurrentView('upload')} 
+                    className="add-photos-button"
+                  >
+                    Ajouter des photos
+                  </button>
                 </div>
               ) : (
                 photos.map(photo => (
