@@ -366,6 +366,7 @@ function App() {
           
           const uploadResult = await uploadResponse.json();
           console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
+          console.log(`🔗 URL reçue: ${uploadResult.imageUrl}`);
           
           // Créer la photo dans la galerie avec l'URL de l'image uploadée
           const newPhoto = {
@@ -375,6 +376,7 @@ function App() {
           };
 
           console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
+          console.log(`🖼️ URL qui sera affichée: ${newPhoto.url}`);
 
           const response = await fetch('/api/photos', {
             method: 'POST',
