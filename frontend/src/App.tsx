@@ -30,6 +30,8 @@ function App() {
   // Fonction pour charger les photos depuis l'API
   const fetchPhotos = async () => {
     try {
+      setLoading(true);
+      setIsRefreshing(true);
       console.log('🔄 Chargement des photos depuis l\'API...');
       const response = await fetch('/api/photos');
       console.log('📡 Réponse API photos:', response.status);
@@ -58,6 +60,9 @@ function App() {
     } catch (error) {
       console.error('❌ Erreur lors du chargement des photos:', error);
       showNotification('Erreur lors du chargement de la galerie', 'error');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
