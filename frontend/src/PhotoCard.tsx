@@ -23,6 +23,9 @@ const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onZoom, onDelete, onToggle
       });
   }, []);
 
+  // Ajouter un timestamp pour éviter le cache
+  const imageUrl = `${photo.url}?t=${Date.now()}`;
+  
   return (
     <div
       className={`photo-card${hovered ? ' photo-card-hovered' : ''}`}
@@ -30,7 +33,22 @@ const PhotoCard: React.FC<PhotoCardProps> = ({ photo, onZoom, onDelete, onToggle
       onMouseLeave={() => setHovered(false)}
     >
       <div className="photo-card-img-wrapper" onClick={() => onZoom(photo)}>
-        <img src={photo.url} alt={photo.title} className="photo-card-img" />
+        <img
+          src={imageUrl}
+          alt={photo.title}
+          className="photo-card-img"
+          onError={(e) => {
+            console.error(`❌ Erreur chargement image: ${photo.url}`);
+            console.error(`📱 Détails:`, {
+              photoId: photo.id,
+              photoTitle: photo.title,
+              photoUrl: photo.url,
+              imageUrl: imageUrl
+            });
+            // Fallback vers une image par défaut
+            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMDAgMTIwQzExMS4wNDYgMTIwIDEyMCAxMTEuMDQ2IDEyMCAxMDBDMTIwIDg4Ljk1NCAxMTEuMDQ2IDgwIDEwMCA4MEM4OC45NTQgODAgODAgODguOTU0IDgwIDEwMEM4MCAxMTEuMDQ2IDg4Ljk1NCAxMjAgMTAwIDEyMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEwMCAxMzBDMTE1LjQ2NCAxMzAgMTI3LjUgMTE3Ljk2NCAxMjcuNSAxMDIuNUMxMjcuNSA4Ny4wMzYgMTE1LjQ2NCA3NSAxMDAgNzVDODQuNTM2IDc1IDcyLjUgODcuMDM2IDcyLjUgMTAyLjVDNzIuNSAxMTcuOTY0IDg0LjUzNiAxMzAgMTAwIDEzMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+          }}
+        />
         <div className={`photo-card-actions-overlay${hovered ? ' visible' : ''}`} onClick={e => e.stopPropagation()}>
           <button
             className="photo-card-action"

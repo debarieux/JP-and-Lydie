@@ -30,39 +30,34 @@ function App() {
   // Fonction pour charger les photos depuis l'API
   const fetchPhotos = async () => {
     try {
-      setLoading(true);
-      setIsRefreshing(true);
       console.log('🔄 Chargement des photos depuis l\'API...');
-      
       const response = await fetch('/api/photos');
-      console.log('📡 Réponse API photos:', response.status, response.statusText);
+      console.log('📡 Réponse API photos:', response.status);
       
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const photosData = await response.json();
-      console.log('📸 Photos reçues:', photosData);
-      console.log('📊 Nombre de photos:', photosData.length);
-      
-      // Vérifier chaque photo
-      photosData.forEach((photo: Photo, index: number) => {
-        console.log(`📷 Photo ${index + 1}:`, {
-          id: photo.id,
-          url: photo.url,
-          title: photo.title,
-          isFavorite: photo.isFavorite
+      if (response.ok) {
+        const photosData = await response.json();
+        console.log('📸 Photos reçues:', photosData);
+        console.log('📊 Nombre de photos:', photosData.length);
+        
+        // Ajouter un timestamp pour forcer le rechargement des images
+        const photosWithCacheBusting = photosData.map((photo: Photo, index: number) => {
+          console.log(`📷 Photo ${index + 1}:`, photo);
+          return {
+            ...photo,
+            // Ajouter un paramètre de cache-busting unique pour chaque photo
+            url: `${photo.url}?t=${Date.now()}_${photo.id}`
+          };
         });
-      });
-      
-      setPhotos(photosData);
-      console.log('✅ Photos chargées avec succès dans l\'état');
+        
+        setPhotos(photosWithCacheBusting);
+        console.log('✅ Photos chargées avec succès dans l\'état');
+      } else {
+        console.error('❌ Erreur lors du chargement des photos:', response.status);
+        showNotification('Erreur lors du chargement de la galerie', 'error');
+      }
     } catch (error) {
       console.error('❌ Erreur lors du chargement des photos:', error);
-      showNotification('Erreur lors du chargement des photos', 'error');
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      showNotification('Erreur lors du chargement de la galerie', 'error');
     }
   };
 
