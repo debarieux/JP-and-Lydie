@@ -19,7 +19,7 @@ function App() {
   const correctPassword = 'Jean-Philippe & Lydie';
 
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Initialiser à false
 
   const [zoomPhoto, setZoomPhoto] = useState<Photo | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -78,6 +78,9 @@ function App() {
   useEffect(() => {
     if (isAuthenticated && currentView === 'gallery') {
       fetchPhotos();
+    } else {
+      // Si pas authentifié, s'assurer que loading est false
+      setLoading(false);
     }
   }, [isAuthenticated, currentView]);
 
@@ -104,16 +107,14 @@ function App() {
 
   // Redirection basée sur l'authentification
   useEffect(() => {
-    if (currentView === 'gallery' && !isAuthenticated) {
+    if (isAuthenticated) {
+      // Si authentifié, aller à la galerie
+      setCurrentView('gallery');
+    } else {
+      // Si pas authentifié, aller à l'upload
       setCurrentView('upload');
     }
-  }, [currentView, isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated && currentView === 'upload') {
-      setCurrentView('gallery');
-    }
-  }, [isAuthenticated, currentView]);
+  }, [isAuthenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
