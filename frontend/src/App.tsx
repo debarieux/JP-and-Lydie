@@ -305,16 +305,22 @@ function App() {
         try {
           let imageData;
           
-          // Détection Samsung
+          // Détection Samsung et appareils mobiles réels
           const isSamsung = navigator.userAgent.includes('Samsung') || navigator.userAgent.includes('SM-');
-          console.log(`📱 Samsung détecté: ${isSamsung}`);
+          const isRealMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
           
-          // Pour Samsung, utiliser directement fileToBase64 sans compression
-          if (isSamsung) {
-            console.log('📱 Mode Samsung - conversion directe sans compression');
+          console.log(`📱 Samsung détecté: ${isSamsung}`);
+          console.log(`📱 Appareil mobile réel: ${isRealMobile}`);
+          console.log(`📱 Appareil tactile: ${isTouchDevice}`);
+          console.log(`📱 User Agent: ${navigator.userAgent}`);
+          
+          // Pour les vrais appareils mobiles, utiliser directement fileToBase64
+          if (isSamsung || isRealMobile || isTouchDevice) {
+            console.log('📱 Mode appareil mobile réel - conversion directe sans compression');
             imageData = await fileToBase64(file);
           } else {
-            // Timeout pour la compression
+            // Timeout pour la compression (seulement pour desktop)
             const compressionTimeout = setTimeout(() => {
               console.error('⏰ TIMEOUT COMPRESSION - Utilisation du fallback');
               throw new Error('Timeout lors de la compression');
@@ -349,11 +355,11 @@ function App() {
           
           console.log(`📦 Fichier préparé: ${file.name} -> ${(imageData.length / 1024).toFixed(2)}KB`);
           
-          // Timeout pour l'upload API
+          // Timeout pour l'upload API (plus court pour les vrais mobiles)
           const uploadTimeout = setTimeout(() => {
             console.error('⏰ TIMEOUT UPLOAD API - Upload bloqué');
             throw new Error('Timeout lors de l\'upload vers l\'API');
-          }, 30000); // 30 secondes
+          }, isRealMobile || isTouchDevice ? 15000 : 30000); // 15s pour mobile, 30s pour desktop
           
           try {
             // Upload de l'image via l'API d'upload
@@ -453,13 +459,21 @@ function App() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
+      // Timeout pour éviter les blocages sur mobile
+      const timeout = setTimeout(() => {
+        console.error('⏰ TIMEOUT FileReader - Fallback vers méthode alternative');
+        reject(new Error('Timeout lors de la lecture du fichier'));
+      }, 10000); // 10 secondes
+      
       reader.onload = () => {
+        clearTimeout(timeout);
         const result = reader.result as string;
         console.log(`📄 Fichier lu: ${file.name} -> ${(result.length / 1024).toFixed(2)}KB`);
         resolve(result);
       };
       
       reader.onerror = () => {
+        clearTimeout(timeout);
         console.error('❌ Erreur lors de la lecture du fichier:', file.name);
         reject(new Error('Impossible de lire le fichier'));
       };
