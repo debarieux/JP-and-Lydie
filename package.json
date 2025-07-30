@@ -1,50 +1,17 @@
 {
-  "name": "galerie-privee-jp-lydie",
+  "name": "galerie-privee",
   "version": "1.0.0",
-  "description": "Galerie privée élégante pour le mariage de Jean-Philippe et Lydie",
-  "private": true,
-  "author": "Développeur",
-  "license": "PRIVATE",
-  "keywords": [
-    "wedding",
-    "gallery",
-    "react",
-    "typescript",
-    "private",
-    "photos"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/username/galerie-privee-jp-lydie.git"
-  },
+  "description": "Galerie privée pour Jean-Philippe et Lydie",
+  "main": "index.js",
   "scripts": {
+    "build": "cd frontend && npm ci && npm run build",
     "start": "cd frontend && npm start",
-    "build": "cd frontend && npm run build",
-    "test": "cd frontend && npm test",
-    "install-all": "cd frontend && npm install",
-    "clean": "cd frontend && rm -rf node_modules package-lock.json && npm install",
     "dev": "cd frontend && npm start",
-    "prod": "cd frontend && npm run build"
+    "install": "cd frontend && npm ci"
   },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
-  },
-  "workspaces": [
-    "frontend"
-  ],
-  "devDependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {},
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  }
+  "devDependencies": {}
 } 
