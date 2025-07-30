@@ -313,47 +313,9 @@ function App() {
         console.log(`📤 Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(1)}MB)`);
         
         try {
-          let processedFile = file;
-          
-          // Compression optimisée pour les appareils mobiles
-          if (isRealMobile || isTouchDevice || isSamsung) {
-            console.log('📱 Mode mobile - compression optimisée');
-            
-            try {
-              // Import dynamique de browser-image-compression
-              const imageCompression = (await import('browser-image-compression')).default;
-              
-              // Options de compression pour les images mobiles
-              const options = {
-                maxSizeMB: 1, // Réduit à 1MB maximum
-                maxWidthOrHeight: 1920, // Limite la résolution
-                useWebWorker: true, // Compression en arrière-plan
-                fileType: 'image/jpeg' // Format optimal
-              };
-
-              console.log('🔄 Compression en cours...');
-              processedFile = await imageCompression(file, options);
-              console.log(`✅ Compression réussie: ${file.name} -> ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
-            } catch (error) {
-              console.log('⚠️ Erreur compression, utilisation du fichier original');
-              processedFile = file;
-            }
-          } else {
-            console.log('💻 Mode desktop - compression standard');
-            try {
-              const imageCompression = (await import('browser-image-compression')).default;
-              const options = {
-                maxSizeMB: 2, // 2MB pour desktop
-                maxWidthOrHeight: 2048,
-                useWebWorker: true,
-                fileType: 'image/jpeg'
-              };
-              processedFile = await imageCompression(file, options);
-            } catch (error) {
-              console.log('⚠️ Erreur compression, utilisation du fichier original');
-              processedFile = file;
-            }
-          }
+          // Utiliser directement le fichier sans compression pour l'instant
+          const processedFile = file;
+          console.log(`📦 Fichier préparé: ${processedFile.name} -> ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
           
           // Préparation des données avec FormData
           const formData = new FormData();
