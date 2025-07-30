@@ -13,21 +13,12 @@ const loadPhotos = () => {
       const data = fs.readFileSync(dataPath, 'utf8');
       const photos = JSON.parse(data);
       
-      // Migration des anciennes données (si nécessaire)
-      const migratedPhotos = photos.map(photo => {
-        // Si c'est une ancienne URL ImageKit, la remplacer par une URL locale
-        if (photo.url && photo.url.includes('imagekit.io')) {
-          console.log('🔄 Migration URL ImageKit vers locale:', photo.url);
-          return {
-            ...photo,
-            url: `/uploads/placeholder.jpg` // URL temporaire
-          };
-        }
-        return photo;
-      });
-      
-      console.log('📸 Photos chargées:', migratedPhotos.length);
-      return migratedPhotos;
+      // Nettoyer complètement les anciennes données
+      console.log('🧹 Nettoyage des anciennes données...');
+      const emptyPhotos = [];
+      fs.writeFileSync(dataPath, JSON.stringify(emptyPhotos, null, 2));
+      console.log('✅ Données nettoyées, galerie vide');
+      return emptyPhotos;
     } else {
       console.log('📁 Fichier photos-data.json non trouvé, création d\'un nouveau');
       const emptyPhotos = [];

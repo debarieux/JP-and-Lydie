@@ -12,6 +12,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {},
+  "dependencies": {
+    "imagekit": "^3.0.0",
+    "formidable": "^3.5.1"
+  },
   "devDependencies": {}
 } 
