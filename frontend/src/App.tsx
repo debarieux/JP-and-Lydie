@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import PhotoCard from './PhotoCard';
 import { Photo } from './types';
+import imageCompression from 'browser-image-compression';
 
 function App() {
   const [password, setPassword] = useState('');
@@ -151,10 +152,9 @@ function App() {
   const handleZoom = (photo: Photo) => setZoomPhoto(photo);
   const handleCloseZoom = () => setZoomPhoto(null);
 
-  // Fonction pour marquer une action récente
+  // Fonction pour marquer une action (rafraîchissement intelligent)
   const markAction = () => {
     localStorage.setItem('lastActionTime', Date.now().toString());
-    console.log('📝 Action marquée - rafraîchissement différé');
   };
 
   const handleDelete = async (id: number) => {
@@ -304,13 +304,6 @@ function App() {
     console.log(`📱 Appareil tactile: ${isTouchDevice}`);
     console.log(`📱 Samsung: ${isSamsung}`);
     
-    // Timeout global pour éviter les blocages
-    const globalTimeout = setTimeout(() => {
-      console.error('⏰ TIMEOUT GLOBAL - Upload bloqué depuis plus de 60 secondes');
-      setIsUploading(false);
-      showNotification('Upload bloqué - Veuillez réessayer', 'error');
-    }, 60000); // 60 secondes
-    
     try {
       console.log('🚀 Début de l\'upload de', uploadedFiles.length, 'photos');
       
@@ -320,43 +313,62 @@ function App() {
         console.log(`📤 Upload photo ${i + 1}/${uploadedFiles.length}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(1)}MB)`);
         
         try {
-          let imageData;
+          let processedFile = file;
           
-          // Version ultra-simplifiée pour vrais appareils mobiles
+          // Compression optimisée pour les appareils mobiles
           if (isRealMobile || isTouchDevice || isSamsung) {
-            console.log('📱 Mode mobile ultra-simplifié - conversion directe');
-            imageData = await fileToBase64(file);
+            console.log('📱 Mode mobile - compression optimisée');
+            
+            // Options de compression pour les images mobiles
+            const options = {
+              maxSizeMB: 1, // Réduit à 1MB maximum
+              maxWidthOrHeight: 1920, // Limite la résolution
+              useWebWorker: true, // Compression en arrière-plan
+              fileType: 'image/jpeg' // Format optimal
+            };
+
+            console.log('🔄 Compression en cours...');
+            processedFile = await imageCompression(file, options);
+            console.log(`✅ Compression réussie: ${file.name} -> ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
           } else {
-            // Version desktop avec compression
-            console.log('💻 Mode desktop - compression intelligente');
-            imageData = await compressImageIntelligently(file, 800, 0.7);
+            console.log('💻 Mode desktop - compression standard');
+            const options = {
+              maxSizeMB: 2, // 2MB pour desktop
+              maxWidthOrHeight: 2048,
+              useWebWorker: true,
+              fileType: 'image/jpeg'
+            };
+            processedFile = await imageCompression(file, options);
           }
           
-          console.log(`📦 Fichier préparé: ${file.name} -> ${(imageData.length / 1024).toFixed(2)}KB`);
+          // Préparation des données avec FormData
+          const formData = new FormData();
+          formData.append('file', processedFile);
+          
+          console.log(`📤 Envoi de ${processedFile.name} vers l'API upload...`);
+          
+          // Timeout de 15 secondes pour éviter les blocages
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
           
           // Upload de l'image via l'API d'upload
-          console.log(`📤 Envoi de ${file.name} vers l'API upload...`);
           const uploadResponse = await fetch('/api/upload', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              imageData: imageData,
-              fileName: file.name
-            })
+            body: formData,
+            signal: controller.signal
           });
           
-          console.log(`📡 Réponse API upload pour ${file.name}:`, uploadResponse.status, uploadResponse.statusText);
+          clearTimeout(timeoutId);
+          console.log(`📡 Réponse API upload pour ${processedFile.name}:`, uploadResponse.status, uploadResponse.statusText);
           
           if (!uploadResponse.ok) {
             const errorText = await uploadResponse.text();
-            console.error(`❌ Erreur API upload pour ${file.name}:`, errorText);
+            console.error(`❌ Erreur API upload pour ${processedFile.name}:`, errorText);
             throw new Error(`Erreur lors de l'upload de l'image: ${uploadResponse.status} - ${errorText}`);
           }
           
           const uploadResult = await uploadResponse.json();
-          console.log(`✅ Upload réussi pour ${file.name}:`, uploadResult);
+          console.log(`✅ Upload réussi pour ${processedFile.name}:`, uploadResult);
           console.log(`🔗 URL reçue: ${uploadResult.imageUrl}`);
           
           // Créer la photo dans la galerie avec l'URL de l'image uploadée
@@ -377,24 +389,28 @@ function App() {
             body: JSON.stringify(newPhoto)
           });
 
-          console.log(`📡 Réponse API photos pour ${file.name}:`, response.status, response.statusText);
+          console.log(`📡 Réponse API photos pour ${processedFile.name}:`, response.status, response.statusText);
           
           if (response.ok) {
             const createdPhoto = await response.json();
             console.log(`✅ Photo créée avec succès:`, createdPhoto);
           } else {
             const errorText = await response.text();
-            console.error(`❌ Erreur API photos pour ${file.name}:`, errorText);
+            console.error(`❌ Erreur API photos pour ${processedFile.name}:`, errorText);
             throw new Error(`Erreur lors de l'ajout de la photo: ${response.status} - ${errorText}`);
           }
           
         } catch (error) {
           console.error(`❌ Erreur pour ${file.name}:`, error);
-          throw error;
+          
+          if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('L\'upload a pris trop de temps. Essayez avec une image plus petite.');
+          } else {
+            throw error;
+          }
         }
       }
       
-      clearTimeout(globalTimeout);
       console.log(`🎉 Toutes les ${uploadedFiles.length} photos uploadées avec succès !`);
       
       // Recharger la galerie après tous les uploads
@@ -410,7 +426,6 @@ function App() {
       showNotification(`${uploadedFiles.length} photo(s) uploadée(s) avec succès !`, 'success');
       
     } catch (error) {
-      clearTimeout(globalTimeout);
       console.error('❌ Erreur lors de l\'upload:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       showNotification(`Erreur lors de l'upload des photos: ${errorMessage}`, 'error');
@@ -420,110 +435,7 @@ function App() {
     }
   };
 
-  // Fonction simple pour convertir un fichier en base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = () => {
-        const result = reader.result as string;
-        console.log(`📄 Fichier lu: ${file.name} -> ${(result.length / 1024).toFixed(2)}KB`);
-        resolve(result);
-      };
-      
-      reader.onerror = () => {
-        console.error('❌ Erreur lors de la lecture du fichier:', file.name);
-        reject(new Error('Impossible de lire le fichier'));
-      };
-      
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Fonction de compression intelligente qui s'adapte à la taille
-  const compressImageIntelligently = (file: File, maxSize: number, quality: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      console.log(`🔍 Début compression intelligente pour ${file.name}`);
-      console.log(`📱 Appareil détecté: ${navigator.userAgent}`);
-      console.log(`📏 Taille fichier: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-      console.log(`🎯 Paramètres: maxSize=${maxSize}px, quality=${quality}`);
-      
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      // Timeout pour éviter les blocages
-      const timeout = setTimeout(() => {
-        console.error('⏰ Timeout lors de la compression');
-        reject(new Error('Timeout lors de la compression de l\'image'));
-      }, 30000); // 30 secondes
-      
-      img.onerror = (error) => {
-        clearTimeout(timeout);
-        console.error('❌ Erreur lors du chargement de l\'image pour compression:', error);
-        console.error('📱 Détails Samsung:', {
-          fileType: file.type,
-          fileSize: file.size,
-          fileName: file.name,
-          userAgent: navigator.userAgent
-        });
-        reject(new Error('Impossible de charger l\'image pour compression'));
-      };
-      
-      img.onload = () => {
-        try {
-          clearTimeout(timeout);
-          console.log(`🖼️ Image chargée: ${img.width}x${img.height}px`);
-          
-          let { width, height } = img;
-          
-          // Redimensionner si nécessaire
-          if (width > height) {
-            if (width > maxSize) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            }
-          } else {
-            if (height > maxSize) {
-              width = (width * maxSize) / height;
-              height = maxSize;
-            }
-          }
-          
-          console.log(`📐 Dimensions finales: ${width}x${height}px`);
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          // Dessiner l'image compressée
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Convertir avec la qualité spécifiée
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          
-          console.log(`✅ Compression réussie: ${file.name} -> ${width}x${height}px, qualité: ${quality}`);
-          console.log(`📦 Taille compressée: ${(compressedDataUrl.length / 1024).toFixed(2)}KB`);
-          
-          resolve(compressedDataUrl);
-        } catch (error) {
-          clearTimeout(timeout);
-          console.error('❌ Erreur lors de la compression:', error);
-          reject(error);
-        }
-      };
-      
-      const objectUrl = URL.createObjectURL(file);
-      console.log(`🔗 URL créée: ${objectUrl}`);
-      img.src = objectUrl;
-      
-      // Nettoyer l'URL après utilisation
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        img.onload = null; // Éviter les appels multiples
-      };
-    });
-  };
-
+  // Fonction pour supprimer un fichier de la liste d'upload
   const removeUploadedFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
