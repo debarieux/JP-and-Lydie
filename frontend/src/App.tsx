@@ -50,23 +50,14 @@ function App() {
         console.log('📸 Photos reçues:', photosData);
         console.log('📊 Nombre de photos:', photosData.length);
         
-        // Ajouter un timestamp pour forcer le rechargement des images
-        const photosWithCacheBusting = photosData.map((photo: Photo, index: number) => {
+        // Utiliser directement les URLs ImageKit sans cache-busting
+        photosData.forEach((photo: Photo, index: number) => {
           console.log(`📷 Photo ${index + 1}:`, photo);
-          console.log(`🔗 URL originale: ${photo.url}`);
-          
-          const urlWithCacheBusting = `${photo.url}?t=${Date.now()}_${photo.id}`;
-          console.log(`🔄 URL avec cache-busting: ${urlWithCacheBusting}`);
-          
-          return {
-            ...photo,
-            // Ajouter un paramètre de cache-busting unique pour chaque photo
-            url: urlWithCacheBusting
-          };
+          console.log(`🔗 URL ImageKit: ${photo.url}`);
         });
         
-        console.log('📸 Photos avec cache-busting:', photosWithCacheBusting);
-        setPhotos(photosWithCacheBusting);
+        console.log('📸 Photos prêtes pour affichage:', photosData);
+        setPhotos(photosData);
         console.log('✅ Photos chargées avec succès dans l\'état');
       } else {
         console.error('❌ Erreur lors du chargement des photos:', response.status);

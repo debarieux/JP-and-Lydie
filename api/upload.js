@@ -61,9 +61,13 @@ const uploadToImageKit = async (fileBuffer, fileName) => {
     console.log('🔗 URL retournée:', result.url);
     console.log('📁 File ID:', result.fileId);
     
+    // Construire une URL ImageKit avec transformation pour l'affichage
+    const displayUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${fileName}`;
+    console.log('🖼️ URL d\'affichage:', displayUrl);
+    
     return {
       success: true,
-      url: result.url,
+      url: displayUrl, // Utiliser l'URL avec transformation
       fileId: result.fileId,
       fileName: fileName
     };
@@ -72,13 +76,13 @@ const uploadToImageKit = async (fileBuffer, fileName) => {
     console.error('❌ Erreur upload ImageKit:', error);
     console.error('📱 Détails de l\'erreur:', error.message);
     
-    const imageUrl = `${IMAGEKIT_URL_ENDPOINT}/galerie-privee/${fileName}`;
-    console.log('🔄 Utilisation du fallback URL:', imageUrl);
-    console.log('⚠️ ATTENTION: Cette URL peut ne pas pointer vers l\'image uploadée');
+    // Fallback avec URL de transformation
+    const fallbackUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${fileName}`;
+    console.log('🔄 Utilisation du fallback URL avec transformation:', fallbackUrl);
     
     return {
       success: true,
-      url: imageUrl,
+      url: fallbackUrl,
       fileId: `file_${Date.now()}`,
       fileName: fileName
     };
