@@ -1,10 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const ImageKit = require('imagekit');
 
 // Configuration ImageKit.io
 const IMAGEKIT_URL_ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/mvhberuj5';
 const IMAGEKIT_PUBLIC_KEY = process.env.IMAGEKIT_PUBLIC_KEY || 'public_GsdYxjQC21Ltg6Yn3DIxNDAPwZ8=';
 const IMAGEKIT_PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY || 'private_93pE8T8UYsOcrc0qPBZy2cLkYLA=';
+
+// Initialiser ImageKit
+const imagekit = new ImageKit({
+  publicKey: IMAGEKIT_PUBLIC_KEY,
+  privateKey: IMAGEKIT_PRIVATE_KEY,
+  urlEndpoint: IMAGEKIT_URL_ENDPOINT,
+});
 
 // Limites de stockage
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB par image
@@ -14,82 +22,12 @@ const generateUniqueFileName = (originalName) => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 15);
   const extension = originalName.split('.').pop() || 'jpg';
-  return `galerie-privee/photo_${timestamp}_${random}.${extension}`;
-};
-
-// Fonction pour upload vers ImageKit.io via API REST
-const uploadToImageKit = async (fileBuffer, fileName) => {
-  try {
-    console.log(`📦 Taille du buffer: ${(fileBuffer.length / 1024 / 1024).toFixed(2)}MB`);
-    
-    const boundary = '----WebKitFormBoundary' + Math.random().toString(16).substr(2);
-    
-    let body = '';
-    body += `--${boundary}\r\n`;
-    body += `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`;
-    body += `Content-Type: image/jpeg\r\n\r\n`;
-    body += fileBuffer.toString('binary');
-    body += `\r\n--${boundary}\r\n`;
-    body += `Content-Disposition: form-data; name="fileName"\r\n\r\n`;
-    body += fileName;
-    body += `\r\n--${boundary}\r\n`;
-    body += `Content-Disposition: form-data; name="folder"\r\n\r\n`;
-    body += 'galerie-privee';
-    body += `\r\n--${boundary}--\r\n`;
-    
-    console.log('🚀 Envoi vers ImageKit...');
-    
-    const response = await fetch('https://upload.imagekit.io/api/v1/files/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${Buffer.from(IMAGEKIT_PRIVATE_KEY + ':').toString('base64')}`,
-        'Content-Type': `multipart/form-data; boundary=${boundary}`
-      },
-      body: Buffer.from(body, 'binary')
-    });
-    
-    console.log(`📡 Réponse ImageKit: ${response.status} ${response.statusText}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Erreur ImageKit API:', response.status, errorText);
-      throw new Error(`Erreur upload ImageKit: ${response.status} - ${errorText}`);
-    }
-    
-    const result = await response.json();
-    console.log('✅ Upload ImageKit réussi:', result);
-    console.log('🔗 URL retournée:', result.url);
-    console.log('📁 File ID:', result.fileId);
-    
-    // Construire une URL ImageKit avec transformation pour l'affichage
-    const displayUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${fileName}`;
-    console.log('🖼️ URL d\'affichage:', displayUrl);
-    
-    return {
-      success: true,
-      url: displayUrl, // Utiliser l'URL avec transformation
-      fileId: result.fileId,
-      fileName: fileName
-    };
-    
-  } catch (error) {
-    console.error('❌ Erreur upload ImageKit:', error);
-    console.error('📱 Détails de l\'erreur:', error.message);
-    
-    // Fallback avec URL de transformation
-    const fallbackUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${fileName}`;
-    console.log('🔄 Utilisation du fallback URL avec transformation:', fallbackUrl);
-    
-    return {
-      success: true,
-      url: fallbackUrl,
-      fileId: `file_${Date.now()}`,
-      fileName: fileName
-    };
-  }
+  return `photo_${timestamp}_${random}.${extension}`;
 };
 
 module.exports = (req, res) => {
+  console.log('📥 API upload appelée');
+  
   // Configuration CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -105,16 +43,12 @@ module.exports = (req, res) => {
   }
 
   try {
-    console.log('📥 API upload appelée');
-    
-    // Vérifier si c'est un FormData
     const contentType = req.headers['content-type'] || '';
     
     if (contentType.includes('multipart/form-data')) {
       // Gestion FormData
       console.log('📦 Réception FormData');
       
-      // Pour Vercel, on doit parser le FormData manuellement
       let data = '';
       req.on('data', chunk => {
         data += chunk;
@@ -122,7 +56,6 @@ module.exports = (req, res) => {
       
       req.on('end', async () => {
         try {
-          // Extraire le fichier du FormData
           const boundary = contentType.split('boundary=')[1];
           const parts = data.split(`--${boundary}`);
           
@@ -139,7 +72,6 @@ module.exports = (req, res) => {
                 }
               }
               
-              // Extraire le contenu du fichier
               const contentStart = part.indexOf('\r\n\r\n') + 4;
               const contentEnd = part.lastIndexOf('\r\n');
               const fileContent = part.substring(contentStart, contentEnd);
@@ -166,13 +98,28 @@ module.exports = (req, res) => {
           console.log(`📝 Nom de fichier généré: ${uniqueFileName}`);
           
           console.log('🚀 Début upload vers ImageKit...');
-          const uploadResult = await uploadToImageKit(fileBuffer, uniqueFileName);
+          
+          // Upload vers ImageKit avec le SDK
+          const uploadResult = await imagekit.upload({
+            file: fileBuffer,
+            fileName: uniqueFileName,
+            folder: "galerie-privee",
+            useUniqueFileName: true,
+            tags: ["galerie", "upload"]
+          });
+          
           console.log('✅ Upload ImageKit réussi:', uploadResult);
+          console.log('🔗 URL retournée:', uploadResult.url);
+          console.log('📁 File ID:', uploadResult.fileId);
+          
+          // Construire une URL avec transformation pour l'affichage
+          const displayUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${uploadResult.filePath}`;
+          console.log('🖼️ URL d\'affichage:', displayUrl);
           
           const response = {
             success: true,
-            imageUrl: uploadResult.url,
-            fileName: uploadResult.fileName,
+            imageUrl: displayUrl,
+            fileName: uploadResult.name,
             fileId: uploadResult.fileId,
             imageSize: fileBuffer.length
           };
@@ -216,14 +163,26 @@ module.exports = (req, res) => {
       console.log(`📝 Nom de fichier généré: ${uniqueFileName}`);
       
       console.log('🚀 Début upload vers ImageKit...');
-      uploadToImageKit(imageBuffer, uniqueFileName)
+      
+      // Upload vers ImageKit avec le SDK
+      imagekit.upload({
+        file: imageBuffer,
+        fileName: uniqueFileName,
+        folder: "galerie-privee",
+        useUniqueFileName: true,
+        tags: ["galerie", "upload"]
+      })
         .then(uploadResult => {
           console.log('✅ Upload ImageKit réussi:', uploadResult);
           
+          // Construire une URL avec transformation pour l'affichage
+          const displayUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${uploadResult.filePath}`;
+          console.log('🖼️ URL d\'affichage:', displayUrl);
+          
           const response = {
             success: true,
-            imageUrl: uploadResult.url,
-            fileName: uploadResult.fileName,
+            imageUrl: displayUrl,
+            fileName: uploadResult.name,
             fileId: uploadResult.fileId,
             imageSize: imageSize
           };
