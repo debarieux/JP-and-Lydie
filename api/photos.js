@@ -4,36 +4,39 @@ const path = require('path');
 // Chemin vers le fichier de stockage persistant
 const STORAGE_FILE = path.join(process.cwd(), 'photos-data.json');
 
-// Fonction pour charger les photos depuis le fichier
+// Fonction pour charger les photos depuis le fichier JSON
 const loadPhotos = () => {
   try {
-    console.log('📁 Tentative de chargement depuis:', STORAGE_FILE);
+    const dataPath = path.join(process.cwd(), 'photos-data.json');
     
-    if (fs.existsSync(STORAGE_FILE)) {
-      const data = fs.readFileSync(STORAGE_FILE, 'utf8');
+    if (fs.existsSync(dataPath)) {
+      const data = fs.readFileSync(dataPath, 'utf8');
       const photos = JSON.parse(data);
       
-      // Migration : convertir les anciennes propriétés vers le nouveau format
-      const migratedPhotos = photos.map(photo => ({
-        id: photo.id,
-        url: photo.url || photo.src, // Support de l'ancienne propriété src
-        title: photo.title || photo.alt, // Support de l'ancienne propriété alt
-        isFavorite: photo.isFavorite !== undefined ? photo.isFavorite : (photo.favorite || false) // Migration de favorite vers isFavorite
-      }));
+      // Migration des anciennes données (si nécessaire)
+      const migratedPhotos = photos.map(photo => {
+        // Si c'est une ancienne URL ImageKit, la remplacer par une URL locale
+        if (photo.url && photo.url.includes('imagekit.io')) {
+          console.log('🔄 Migration URL ImageKit vers locale:', photo.url);
+          return {
+            ...photo,
+            url: `/uploads/placeholder.jpg` // URL temporaire
+          };
+        }
+        return photo;
+      });
       
-      console.log('✅ Photos chargées et migrées:', migratedPhotos.length);
+      console.log('📸 Photos chargées:', migratedPhotos.length);
       return migratedPhotos;
     } else {
-      console.log('📁 Fichier inexistant, création d\'une galerie vide');
-      // Créer le fichier avec une galerie vide
-      const emptyGallery = [];
-      fs.writeFileSync(STORAGE_FILE, JSON.stringify(emptyGallery, null, 2));
-      console.log('✅ Fichier créé avec galerie vide');
-      return emptyGallery;
+      console.log('📁 Fichier photos-data.json non trouvé, création d\'un nouveau');
+      const emptyPhotos = [];
+      fs.writeFileSync(dataPath, JSON.stringify(emptyPhotos, null, 2));
+      return emptyPhotos;
     }
   } catch (error) {
     console.error('❌ Erreur lors du chargement des photos:', error);
-    console.log('🔄 Retour d\'une galerie vide par défaut');
+    // Retourner un tableau vide en cas d'erreur
     return [];
   }
 };

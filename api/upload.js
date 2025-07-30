@@ -1,18 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const ImageKit = require('imagekit');
-
-// Configuration ImageKit.io
-const IMAGEKIT_URL_ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/mvhberuj5';
-const IMAGEKIT_PUBLIC_KEY = process.env.IMAGEKIT_PUBLIC_KEY || 'public_GsdYxjQC21Ltg6Yn3DIxNDAPwZ8=';
-const IMAGEKIT_PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY || 'private_93pE8T8UYsOcrc0qPBZy2cLkYLA=';
-
-// Initialiser ImageKit
-const imagekit = new ImageKit({
-  publicKey: IMAGEKIT_PUBLIC_KEY,
-  privateKey: IMAGEKIT_PRIVATE_KEY,
-  urlEndpoint: IMAGEKIT_URL_ENDPOINT,
-});
 
 // Limites de stockage
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB par image
@@ -97,35 +84,27 @@ module.exports = (req, res) => {
           const uniqueFileName = generateUniqueFileName(fileName);
           console.log(`📝 Nom de fichier généré: ${uniqueFileName}`);
           
-          console.log('🚀 Début upload vers ImageKit...');
+          // Créer le dossier uploads s'il n'existe pas
+          const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+            console.log('📁 Dossier uploads créé:', uploadDir);
+          }
           
-          // Upload vers ImageKit avec le SDK
-          const uploadResult = await imagekit.upload({
-            file: fileBuffer,
-            fileName: uniqueFileName,
-            folder: "galerie-privee",
-            useUniqueFileName: true,
-            tags: ["galerie", "upload"]
-          });
+          // Sauvegarder le fichier localement
+          const filePath = path.join(uploadDir, uniqueFileName);
+          fs.writeFileSync(filePath, fileBuffer);
+          console.log('💾 Fichier sauvegardé:', filePath);
           
-          console.log('✅ Upload ImageKit réussi:', uploadResult);
-          console.log('🔗 URL retournée:', uploadResult.url);
-          console.log('📁 File ID:', uploadResult.fileId);
-          console.log('📁 File Path:', uploadResult.filePath);
-          console.log('📁 File Name:', uploadResult.name);
-          console.log('📁 File Type:', uploadResult.fileType);
-          console.log('📁 File Size:', uploadResult.size);
-          console.log('📁 File Height:', uploadResult.height);
-          console.log('📁 File Width:', uploadResult.width);
-          
-          // Utiliser directement l'URL retournée par ImageKit (sans transformation)
-          console.log('🖼️ URL d\'affichage:', uploadResult.url);
+          // Construire l'URL publique
+          const publicUrl = `/uploads/${uniqueFileName}`;
+          console.log('🔗 URL publique:', publicUrl);
           
           const response = {
             success: true,
-            imageUrl: uploadResult.url, // URL directe sans transformation
-            fileName: uploadResult.name,
-            fileId: uploadResult.fileId,
+            imageUrl: publicUrl,
+            fileName: uniqueFileName,
+            fileId: `file_${Date.now()}`,
             imageSize: fileBuffer.length
           };
 
@@ -167,37 +146,32 @@ module.exports = (req, res) => {
       const uniqueFileName = generateUniqueFileName(fileName || 'photo.jpg');
       console.log(`📝 Nom de fichier généré: ${uniqueFileName}`);
       
-      console.log('🚀 Début upload vers ImageKit...');
+      // Créer le dossier uploads s'il n'existe pas
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        console.log('📁 Dossier uploads créé:', uploadDir);
+      }
       
-      // Upload vers ImageKit avec le SDK
-      imagekit.upload({
-        file: imageBuffer,
+      // Sauvegarder le fichier localement
+      const filePath = path.join(uploadDir, uniqueFileName);
+      fs.writeFileSync(filePath, imageBuffer);
+      console.log('💾 Fichier sauvegardé:', filePath);
+      
+      // Construire l'URL publique
+      const publicUrl = `/uploads/${uniqueFileName}`;
+      console.log('🔗 URL publique:', publicUrl);
+      
+      const response = {
+        success: true,
+        imageUrl: publicUrl,
         fileName: uniqueFileName,
-        folder: "galerie-privee",
-        useUniqueFileName: true,
-        tags: ["galerie", "upload"]
-      })
-        .then(uploadResult => {
-          console.log('✅ Upload ImageKit réussi:', uploadResult);
-          
-          // Utiliser directement l'URL retournée par ImageKit (sans transformation)
-          console.log('🖼️ URL d\'affichage:', uploadResult.url);
-          
-          const response = {
-            success: true,
-            imageUrl: uploadResult.url, // URL directe sans transformation
-            fileName: uploadResult.name,
-            fileId: uploadResult.fileId,
-            imageSize: imageSize
-          };
+        fileId: `file_${Date.now()}`,
+        imageSize: imageSize
+      };
 
-          console.log('📤 Envoi de la réponse:', response);
-          res.status(200).json(response);
-        })
-        .catch(error => {
-          console.error('❌ Erreur upload ImageKit:', error);
-          res.status(500).json({ error: error.message });
-        });
+      console.log('📤 Envoi de la réponse:', response);
+      res.status(200).json(response);
     }
 
   } catch (error) {
