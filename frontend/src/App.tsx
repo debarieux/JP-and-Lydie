@@ -53,13 +53,19 @@ function App() {
         // Ajouter un timestamp pour forcer le rechargement des images
         const photosWithCacheBusting = photosData.map((photo: Photo, index: number) => {
           console.log(`📷 Photo ${index + 1}:`, photo);
+          console.log(`🔗 URL originale: ${photo.url}`);
+          
+          const urlWithCacheBusting = `${photo.url}?t=${Date.now()}_${photo.id}`;
+          console.log(`🔄 URL avec cache-busting: ${urlWithCacheBusting}`);
+          
           return {
             ...photo,
             // Ajouter un paramètre de cache-busting unique pour chaque photo
-            url: `${photo.url}?t=${Date.now()}_${photo.id}`
+            url: urlWithCacheBusting
           };
         });
         
+        console.log('📸 Photos avec cache-busting:', photosWithCacheBusting);
         setPhotos(photosWithCacheBusting);
         console.log('✅ Photos chargées avec succès dans l\'état');
       } else {
@@ -356,6 +362,15 @@ function App() {
 
           console.log(`📝 Envoi de la photo à l'API photos:`, newPhoto);
           console.log(`🖼️ URL qui sera affichée: ${newPhoto.url}`);
+          console.log(`🔍 Vérification URL: ${newPhoto.url}`);
+          
+          // Test de l'URL pour voir si elle est accessible
+          try {
+            const testResponse = await fetch(newPhoto.url, { method: 'HEAD' });
+            console.log(`🔍 Test URL ${newPhoto.url}: ${testResponse.status} ${testResponse.statusText}`);
+          } catch (error) {
+            console.error(`❌ URL non accessible: ${newPhoto.url}`, error);
+          }
 
           const response = await fetch('/api/photos', {
             method: 'POST',
@@ -370,6 +385,8 @@ function App() {
           if (response.ok) {
             const createdPhoto = await response.json();
             console.log(`✅ Photo créée avec succès:`, createdPhoto);
+            console.log(`🆔 ID de la photo créée: ${createdPhoto.id}`);
+            console.log(`🔗 URL finale: ${createdPhoto.url}`);
           } else {
             const errorText = await response.text();
             console.error(`❌ Erreur API photos pour ${processedFile.name}:`, errorText);
