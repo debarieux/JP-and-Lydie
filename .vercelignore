@@ -1,0 +1,12 @@
+# Ignorer les fichiers de développement
+node_modules/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ne pas ignorer le dossier frontend
+!frontend/
+!frontend/src/
+!frontend/public/
+!frontend/package.json 
