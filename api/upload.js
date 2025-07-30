@@ -111,14 +111,19 @@ module.exports = (req, res) => {
           console.log('✅ Upload ImageKit réussi:', uploadResult);
           console.log('🔗 URL retournée:', uploadResult.url);
           console.log('📁 File ID:', uploadResult.fileId);
+          console.log('📁 File Path:', uploadResult.filePath);
+          console.log('📁 File Name:', uploadResult.name);
+          console.log('📁 File Type:', uploadResult.fileType);
+          console.log('📁 File Size:', uploadResult.size);
+          console.log('📁 File Height:', uploadResult.height);
+          console.log('📁 File Width:', uploadResult.width);
           
-          // Construire une URL avec transformation pour l'affichage
-          const displayUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${uploadResult.filePath}`;
-          console.log('🖼️ URL d\'affichage:', displayUrl);
+          // Utiliser directement l'URL retournée par ImageKit (sans transformation)
+          console.log('🖼️ URL d\'affichage:', uploadResult.url);
           
           const response = {
             success: true,
-            imageUrl: displayUrl,
+            imageUrl: uploadResult.url, // URL directe sans transformation
             fileName: uploadResult.name,
             fileId: uploadResult.fileId,
             imageSize: fileBuffer.length
@@ -175,13 +180,12 @@ module.exports = (req, res) => {
         .then(uploadResult => {
           console.log('✅ Upload ImageKit réussi:', uploadResult);
           
-          // Construire une URL avec transformation pour l'affichage
-          const displayUrl = `${IMAGEKIT_URL_ENDPOINT}/tr:w-800,h-600,fo-auto/${uploadResult.filePath}`;
-          console.log('🖼️ URL d\'affichage:', displayUrl);
+          // Utiliser directement l'URL retournée par ImageKit (sans transformation)
+          console.log('🖼️ URL d\'affichage:', uploadResult.url);
           
           const response = {
             success: true,
-            imageUrl: displayUrl,
+            imageUrl: uploadResult.url, // URL directe sans transformation
             fileName: uploadResult.name,
             fileId: uploadResult.fileId,
             imageSize: imageSize
