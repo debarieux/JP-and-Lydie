@@ -1,21 +1,28 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "frontend/build",
-  "installCommand": "npm run install",
-  "framework": "create-react-app",
-  "public": true,
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    },
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
     }
   ],
-  "functions": {
-    "api/upload.js": {
-      "maxDuration": 15
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/build/$1"
     }
-  },
+  ],
   "env": {
     "REACT_APP_TITLE": "Galerie Privée - Jean-Philippe & Lydie",
     "REACT_APP_DEFAULT_PASSWORD": "Jean-Philippe & Lydie",
