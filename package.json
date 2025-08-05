@@ -13,8 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "imagekit": "^3.0.0",
-    "formidable": "^3.5.1"
-  },
-  "devDependencies": {}
-} 
+    "busboy": "^1.6.0",
+    "formidable": "^3.5.4",
+    "imagekit": "^3.2.5"
+  }
+}

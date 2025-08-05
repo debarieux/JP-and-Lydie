@@ -13,12 +13,8 @@ const loadPhotos = () => {
       const data = fs.readFileSync(dataPath, 'utf8');
       const photos = JSON.parse(data);
       
-      // Nettoyer complètement les anciennes données
-      console.log('🧹 Nettoyage des anciennes données...');
-      const emptyPhotos = [];
-      fs.writeFileSync(dataPath, JSON.stringify(emptyPhotos, null, 2));
-      console.log('✅ Données nettoyées, galerie vide');
-      return emptyPhotos;
+      console.log('📸 Photos chargées depuis le fichier:', photos.length);
+      return photos;
     } else {
       console.log('📁 Fichier photos-data.json non trouvé, création d\'un nouveau');
       const emptyPhotos = [];
@@ -52,7 +48,7 @@ module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
+  
   if (req.method === 'OPTIONS') {
     console.log('📤 Réponse OPTIONS');
     res.status(200).end();
@@ -102,7 +98,7 @@ module.exports = (req, res) => {
             console.error('❌ Photo non trouvée pour ID:', id);
             return res.status(404).json({ error: "Photo non trouvée" });
           }
-
+          
           photos[photoIndex] = { ...photos[photoIndex], ...req.body };
           savePhotos(photos); // Sauvegarder immédiatement
           console.log('✅ PUT /api/photos - Photo mise à jour:', photos[photoIndex]);

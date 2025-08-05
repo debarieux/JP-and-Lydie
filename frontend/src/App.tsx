@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import PhotoCard from './PhotoCard';
 import { Photo } from './types';
-
 
 function App() {
   const [password, setPassword] = useState('');
@@ -27,6 +26,7 @@ function App() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fonction pour charger les photos depuis l'API
   const fetchPhotos = async () => {
@@ -280,6 +280,45 @@ function App() {
     
     // Accepter tous les fichiers d'image, peu importe la taille
     setUploadedFiles(prev => [...prev, ...imageFiles]);
+    
+    // Vider l'input file pour permettre de sélectionner les mêmes fichiers à nouveau
+    event.target.value = '';
+  };
+
+  // Gestion du drag & drop
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.add('drag-over');
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.remove('drag-over');
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.remove('drag-over');
+    
+    const files = Array.from(event.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length !== files.length) {
+      showNotification('Seules les images sont acceptées', 'error');
+    }
+    
+    if (imageFiles.length > 0) {
+      setUploadedFiles(prev => [...prev, ...imageFiles]);
+      showNotification(`${imageFiles.length} photo(s) ajoutée(s) par glisser-déposer`, 'success');
+    }
+  };
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const handleUploadSubmit = async () => {
@@ -407,6 +446,11 @@ function App() {
       // Nettoyer les fichiers uploadés
       setUploadedFiles([]);
       
+      // Vider l'input file pour s'assurer qu'il soit réinitialisé
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
       showNotification(`${uploadedFiles.length} photo(s) uploadée(s) avec succès !`, 'success');
       
     } catch (error) {
@@ -450,11 +494,18 @@ function App() {
           </div>
 
           <div className="upload-section-container">
-            <div className="upload-area">
-              <input
-                type="file"
+            <div 
+              className="upload-area"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onDragEnter={handleDragEnter}
+            >
+              <input 
+                ref={fileInputRef}
+                type="file" 
                 multiple
-                accept="image/*"
+                accept="image/*" 
                 onChange={handleFileUpload}
                 className="file-input"
                 id="file-upload"
@@ -489,7 +540,7 @@ function App() {
                         }}
                       />
                       <div className="uploaded-file-name">{file.name}</div>
-                      <button
+                      <button 
                         onClick={() => removeUploadedFile(index)}
                         className="remove-file-button"
                       >
@@ -645,12 +696,6 @@ function App() {
         <header className="gallery-header">
           <h1 className="gallery-title">Notre Galerie Privée</h1>
           <div className="gallery-header-actions">
-            <button 
-              onClick={() => setCurrentView('upload')} 
-              className="add-photos-header-button"
-            >
-              Ajouter des photos
-            </button>
             {isRefreshing && (
               <div className="refresh-indicator">
                 <div className="refresh-spinner"></div>
@@ -691,16 +736,16 @@ function App() {
                 </div>
               ) : (
                 photos.map(photo => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                onZoom={handleZoom}
-                onDelete={handleDelete}
-                onToggleFavorite={handleToggleFavorite}
-              />
+                  <PhotoCard 
+                    key={photo.id} 
+                    photo={photo} 
+                    onZoom={handleZoom}
+                    onDelete={handleDelete}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
                 ))
               )}
-          </div>
+            </div>
           )}
         </main>
 

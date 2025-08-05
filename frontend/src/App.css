@@ -5,6 +5,17 @@
   box-sizing: border-box;
 }
 
+body {
+  font-family: 'Cormorant Garamond', serif;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+.App {
+  min-height: 100vh;
+}
+
 /* Loading styles */
 .loading-container {
   display: flex;
@@ -27,17 +38,6 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-body {
-  font-family: 'Cormorant Garamond', serif;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  color: #2c3e50;
-  line-height: 1.6;
-}
-
-.App {
-  min-height: 100vh;
 }
 
 /* Header principal */
@@ -164,6 +164,24 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+}
+
+/* Styles pour le drag & drop */
+.upload-area.drag-over {
+  border-color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+}
+
+.upload-area.drag-over .upload-icon svg {
+  transform: scale(1.1);
+  stroke: #3498db;
+}
+
+.upload-area.drag-over .upload-placeholder {
+  color: #3498db;
+  font-weight: 600;
 }
 
 .upload-area:hover {
@@ -456,7 +474,6 @@ body {
 /* Styles pour le changement de mot de passe */
 .password-change-section {
   margin-top: 2rem;
-  text-align: center;
 }
 
 .password-change-button {
@@ -827,7 +844,76 @@ body {
 
 .notification.error {
   background: #dc3545;
-  box-shadow: 0 8px 24px rgba(220, 53, 69, 0.2);
+}
+
+/* PhotoCard - États de chargement et d'erreur */
+.photo-image-container {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.3s ease;
+}
+
+.photo-image.loading {
+  opacity: 0;
+}
+
+.photo-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 0.9rem;
+  z-index: 1;
+}
+
+.photo-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 0.9rem;
+  z-index: 2;
+  gap: 0.5rem;
+}
+
+.retry-button {
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s ease;
+}
+
+.retry-button:hover {
+  background: #0056b3;
 }
 
 /* Indicateur de rafraîchissement automatique */
@@ -864,7 +950,6 @@ body {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 
 
 /* Responsive design */
@@ -1032,5 +1117,116 @@ body {
   .login-container {
     padding: 2rem;
     margin: 1rem;
+  }
+}
+
+/* Styles pour les boutons d'action des cartes photos */
+.photo-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid #e9ecef;
+  backdrop-filter: blur(10px);
+}
+
+.favorite-button,
+.download-button,
+.delete-button {
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  font-size: 0;
+  padding: 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.8rem;
+  min-height: 2.8rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.favorite-button:hover,
+.download-button:hover,
+.delete-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-color: #d1d5db;
+}
+
+.favorite-button:active,
+.download-button:active,
+.delete-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.favorite-button {
+  color: #6b7280;
+}
+
+.favorite-button:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.favorite-button.favorited {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
+  animation: heartBeat 0.3s ease-in-out;
+}
+
+.favorite-button.favorited:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.download-button {
+  color: #6b7280;
+}
+
+.download-button:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.delete-button {
+  color: #6b7280;
+}
+
+.delete-button:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* Animation pour le bouton favori */
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Responsive pour les boutons */
+@media (max-width: 768px) {
+  .photo-actions {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .favorite-button,
+  .download-button,
+  .delete-button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem;
   }
 }
