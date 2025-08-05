@@ -313,6 +313,11 @@ function App() {
     if (imageFiles.length > 0) {
       setUploadedFiles(prev => [...prev, ...imageFiles]);
       showNotification(`${imageFiles.length} photo(s) ajoutée(s) par glisser-déposer`, 'success');
+      
+      // Vider l'input file pour s'assurer qu'il soit réinitialisé
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
